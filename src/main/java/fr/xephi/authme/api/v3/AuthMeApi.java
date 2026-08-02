@@ -10,6 +10,7 @@ import fr.xephi.authme.process.register.executors.RegistrationMethod;
 import fr.xephi.authme.security.PasswordSecurity;
 import fr.xephi.authme.security.crypts.HashedPassword;
 import fr.xephi.authme.service.GeoIpService;
+import fr.xephi.authme.service.PendingEmailChangeCache;
 import fr.xephi.authme.service.ValidationService;
 import fr.xephi.authme.util.PlayerUtils;
 import org.bukkit.Bukkit;
@@ -43,13 +44,15 @@ public class AuthMeApi {
     private final ValidationService validationService;
     private final PlayerCache playerCache;
     private final GeoIpService geoIpService;
+    private final PendingEmailChangeCache pendingEmailChangeCache;
 
     /*
      * Constructor for AuthMeApi.
      */
     @Inject
     AuthMeApi(AuthMe plugin, DataSource dataSource, PlayerCache playerCache, PasswordSecurity passwordSecurity,
-              Management management, ValidationService validationService, GeoIpService geoIpService) {
+              Management management, ValidationService validationService, GeoIpService geoIpService,
+              PendingEmailChangeCache pendingEmailChangeCache) {
         this.plugin = plugin;
         this.dataSource = dataSource;
         this.passwordSecurity = passwordSecurity;
@@ -57,6 +60,7 @@ public class AuthMeApi {
         this.validationService = validationService;
         this.playerCache = playerCache;
         this.geoIpService = geoIpService;
+        this.pendingEmailChangeCache = pendingEmailChangeCache;
         AuthMeApi.singleton = this;
     }
 
@@ -377,5 +381,64 @@ public class AuthMeApi {
      */
     public String getCountryName(String ip) {
         return geoIpService.getCountryName(ip);
+    }
+
+    /**
+     * Returns the email address associated with the given player.
+     *
+     * @param playerName the name of the player
+     * @return the email address, or null if no email is bound
+     */
+    public String getEmail(String playerName) {
+        PlayerAuth auth = playerCache.getAuth(playerName);
+        if (auth == null) {
+            auth = dataSource.getAuth(playerName);
+        }
+        if (auth != null) {
+            String email = auth.getEmail();
+            return PlayerAuth.DB_EMAIL_DEFAULT.equals(email) ? null : email;
+        }
+        return null;
+    }
+
+    /**
+     * Returns whether the given player has an email address bound.
+     *
+     * @param playerName the name of the player
+     * @return true if an email is bound, false otherwise
+     */
+    public boolean hasEmail(String playerName) {
+        return getEmail(playerName) != null;
+    }
+
+    /**
+     * Returns whether the given player has a pending email change awaiting confirmation.
+     *
+     * @param playerName the name of the player
+     * @return true if a pending change exists, false otherwise
+     */
+    public boolean hasPendingEmailChange(String playerName) {
+        return pendingEmailChangeCache.has(playerName);
+    }
+
+    /**
+     * Returns the pending email address awaiting confirmation for the given player.
+     *
+     * @param playerName the name of the player
+     * @return the pending email address, or null if no pending change exists
+     */
+    public String getPendingEmail(String playerName) {
+        PendingEmailChangeCache.PendingEmailChange pending = pendingEmailChangeCache.get(playerName);
+        return pending != null ? pending.getNewEmail() : null;
+    }
+
+    /**
+     * Returns whether the given email address is already in use by another account.
+     *
+     * @param email the email address to check
+     * @return true if the email is in use, false otherwise
+     */
+    public boolean isEmailUsed(String email) {
+        return dataSource.countAuthsByEmail(email) > 0;
     }
 }
