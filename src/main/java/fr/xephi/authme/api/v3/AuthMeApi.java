@@ -441,4 +441,42 @@ public class AuthMeApi {
     public boolean isEmailUsed(String email) {
         return dataSource.countAuthsByEmail(email) > 0;
     }
+
+
+    /**
+     * 根据邮箱反查玩家名（用于网站登录：邮箱 -> 游戏角色）。
+     *
+     * @param email 邮箱地址
+     * @return 玩家名；未找到返回 null
+     */
+    public String getPlayerNameByEmail(String email) {
+        if (email == null || email.isEmpty()) {
+            return null;
+        }
+        for (PlayerAuth auth : dataSource.getAllAuths()) {
+            String authEmail = auth.getEmail();
+            if (authEmail != null && !PlayerAuth.DB_EMAIL_DEFAULT.equals(authEmail) && authEmail.equalsIgnoreCase(email)) {
+                return auth.getNickname();
+            }
+        }
+        return null;
+    }
+
+    /**
+     * 用「服务器内登录密码」校验邮箱对应的账号（网站登录使用）。
+     *
+     * @param email    邮箱地址
+     * @param password 服务器内登录密码
+     * @return true 表示密码正确
+     */
+    public boolean checkPasswordByEmail(String email, String password) {
+        if (email == null || email.isEmpty() || password == null || password.isEmpty()) {
+            return false;
+        }
+        String playerName = getPlayerNameByEmail(email);
+        if (playerName == null) {
+            return false;
+        }
+        return passwordSecurity.comparePassword(password, playerName);
+    }
 }
