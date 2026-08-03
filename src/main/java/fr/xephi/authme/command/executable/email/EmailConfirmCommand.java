@@ -5,10 +5,12 @@ import fr.xephi.authme.command.PlayerCommand;
 import fr.xephi.authme.data.auth.PlayerAuth;
 import fr.xephi.authme.data.auth.PlayerCache;
 import fr.xephi.authme.datasource.DataSource;
+import fr.xephi.authme.events.EmailConfirmedEvent;
 import fr.xephi.authme.message.MessageKey;
 import fr.xephi.authme.output.ConsoleLoggerFactory;
 import fr.xephi.authme.service.CommonService;
 import fr.xephi.authme.service.PendingEmailChangeCache;
+import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 
 import javax.inject.Inject;
@@ -67,6 +69,8 @@ public class EmailConfirmCommand extends PlayerCommand {
             playerCache.updatePlayer(auth);
             pendingEmailChangeCache.remove(playerName);
             commonService.send(player, MessageKey.EMAIL_CONFIRM_SUCCESS);
+            // 通知其他插件：邮箱绑定确认完成（数据整合插件据此向网站后端同步）
+            Bukkit.getPluginManager().callEvent(new EmailConfirmedEvent(player, pending.getNewEmail()));
         } else {
             logger.warning("Could not save email for player '" + player + "'");
             commonService.send(player, MessageKey.ERROR);
