@@ -66,65 +66,88 @@ public class AgentMailSender implements MailSender {
         cliPath = resolveWindowsCommand(cliPath);
         logger.info("AgentMailSender: using cliPath=" + cliPath + " for recipient=" + recipient);
 
-        // Build the base command (without confirmation token)
-        List<String> baseCommand = buildSendCommand(cliPath, recipient, subject, htmlContent, imageFile);
+        // Write the body to a temp file and use --body-file. This is the CLI's
+        // recommended way to send complex HTML (containing <, >, quotes, etc.)
+        // and avoids argument-quoting issues across both phases.
+        File bodyFile = null;
+        try {
+            String body = htmlContent;
+            if (imageFile != null && body != null) {
+                body = body.replace("<image />",
+                    "[Password image is attached to this email.]");
+            }
+            bodyFile = File.createTempFile("authme-agentmail-", ".html");
+            bodyFile.deleteOnExit();
+            java.nio.file.Files.write(bodyFile.toPath(),
+                (body == null ? "" : body).getBytes(StandardCharsets.UTF_8));
 
-        // Phase 1: send request to get confirmation token
-        String phase1Output = runCliCommand(baseCommand, timeoutSeconds);
-        if (phase1Output == null) {
-            return false;
-        }
-        logger.info("AgentMailSender phase1 output: " + phase1Output.trim());
+            // Build the base command (without confirmation token)
+            List<String> baseCommand = buildSendCommand(cliPath, recipient, subject, bodyFile, imageFile);
 
-        String token = extractToken(phase1Output);
-        if (token == null) {
-            // No token returned — only treat as success if there's no confirmation_required
-            // and no error. The Phase 1 response always has "ok": true even when it
-            // requires confirmation, so "ok": true alone is NOT a success signal.
-            if (!phase1Output.contains("\"confirmation_required\"")
-                    && !phase1Output.contains("\"error\"")
-                    && OK_PATTERN.matcher(phase1Output).find()) {
-                logger.info("agently-cli sent mail to " + recipient + " without confirmation");
+            // Phase 1: send request to get confirmation token
+            String phase1Output = runCliCommand(baseCommand, timeoutSeconds);
+            if (phase1Output == null) {
+                return false;
+            }
+            logger.info("AgentMailSender phase1 output: " + phase1Output.trim());
+
+            String token = extractToken(phase1Output);
+            if (token == null) {
+                // No token returned — only treat as success if there's no confirmation_required
+                // and no error. The Phase 1 response always has "ok": true even when it
+                // requires confirmation, so "ok": true alone is NOT a success signal.
+                if (!phase1Output.contains("\"confirmation_required\"")
+                        && !phase1Output.contains("\"error\"")
+                        && OK_PATTERN.matcher(phase1Output).find()) {
+                    logger.info("agently-cli sent mail to " + recipient + " without confirmation");
+                    return true;
+                }
+                logger.warning("agently-cli did not return a confirmation token. Output: " + phase1Output);
+                if (looksLikeAuthError(phase1Output)) {
+                    logger.warning("Agent Mail CLI may not be authorized. Run 'agently-cli auth login' "
+                        + "and complete the WeChat OAuth flow on the server host.");
+                }
+                return false;
+            }
+            logger.info("AgentMailSender got confirmation token: " + token);
+
+            // Phase 2: confirm and send with the token
+            List<String> confirmCommand = new ArrayList<>(baseCommand);
+            confirmCommand.add("--confirmation-token");
+            confirmCommand.add(token);
+
+            String phase2Output = runCliCommand(confirmCommand, timeoutSeconds);
+            if (phase2Output == null) {
+                return false;
+            }
+            logger.info("AgentMailSender phase2 output: " + phase2Output.trim());
+
+            if (QUEUED_PATTERN.matcher(phase2Output).find()) {
+                logger.info("AgentMailSender: mail queued successfully to " + recipient);
                 return true;
             }
-            logger.warning("agently-cli did not return a confirmation token. Output: " + phase1Output);
-            if (looksLikeAuthError(phase1Output)) {
-                logger.warning("Agent Mail CLI may not be authorized. Run 'agently-cli auth login' "
-                    + "and complete the WeChat OAuth flow on the server host.");
+            // "ok": true with no confirmation_required and no error = success
+            if (OK_PATTERN.matcher(phase2Output).find()
+                    && !phase2Output.contains("\"confirmation_required\"")
+                    && !phase2Output.contains("\"error\"")) {
+                logger.info("AgentMailSender: mail sent successfully to " + recipient);
+                return true;
             }
+
+            logger.warning("agently-cli confirmation phase did not complete. Output: " + phase2Output);
             return false;
-        }
-        logger.info("AgentMailSender got confirmation token: " + token);
-
-        // Phase 2: confirm and send with the token
-        List<String> confirmCommand = new ArrayList<>(baseCommand);
-        confirmCommand.add("--confirmation-token");
-        confirmCommand.add(token);
-
-        String phase2Output = runCliCommand(confirmCommand, timeoutSeconds);
-        if (phase2Output == null) {
+        } catch (Exception e) {
+            logger.logException("Failed to send via agently-cli:", e);
             return false;
+        } finally {
+            if (bodyFile != null) {
+                try { bodyFile.delete(); } catch (Exception ignored) { }
+            }
         }
-        logger.info("AgentMailSender phase2 output: " + phase2Output.trim());
-
-        if (QUEUED_PATTERN.matcher(phase2Output).find()) {
-            logger.info("AgentMailSender: mail queued successfully to " + recipient);
-            return true;
-        }
-        // "ok": true with no confirmation_required and no error = success
-        if (OK_PATTERN.matcher(phase2Output).find()
-                && !phase2Output.contains("\"confirmation_required\"")
-                && !phase2Output.contains("\"error\"")) {
-            logger.info("AgentMailSender: mail sent successfully to " + recipient);
-            return true;
-        }
-
-        logger.warning("agently-cli confirmation phase did not complete. Output: " + phase2Output);
-        return false;
     }
 
     private List<String> buildSendCommand(String cliPath, String recipient, String subject,
-                                          String htmlContent, File imageFile) {
+                                          File bodyFile, File imageFile) {
         List<String> command = new ArrayList<>();
         // cliPath may be "node \"C:\\path\\run.js\"" (resolved from .cmd wrapper on Windows)
         // or a simple "agently-cli" / "C:\\...\\agently-cli.cmd"
@@ -147,17 +170,13 @@ public class AgentMailSender implements MailSender {
         command.add(recipient);
         command.add("--subject");
         command.add(subject == null ? "" : subject);
-        command.add("--body");
-        String body = htmlContent;
-        if (imageFile != null && body != null) {
-            // The CLI cannot embed inline images; fall back to a note.
-            body = body.replace("<image />",
-                "[Password image is attached to this email.]");
-        }
-        command.add(body == null ? "" : body);
+        // Use --body-file (relative path) for HTML content to avoid quoting issues
+        // with <, >, & characters across the two CLI phases.
+        command.add("--body-file");
+        command.add(bodyFile.getAbsolutePath());
         if (imageFile != null) {
             command.add("--attachment");
-            command.add(imageFile.getName());
+            command.add(imageFile.getAbsolutePath());
         }
         return command;
     }
