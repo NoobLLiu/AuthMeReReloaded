@@ -69,6 +69,9 @@ public class AgentMailSender implements MailSender {
         // Write the body to a temp file and use --body-file. This is the CLI's
         // recommended way to send complex HTML (containing <, >, quotes, etc.)
         // and avoids argument-quoting issues across both phases.
+        // The CLI requires --body-file to be a RELATIVE path inside the current
+        // working directory subtree, so the file must be created under the JVM's
+        // cwd (a file in the system temp dir would be rejected as non-relative).
         File bodyFile = null;
         try {
             String body = htmlContent;
@@ -76,7 +79,8 @@ public class AgentMailSender implements MailSender {
                 body = body.replace("<image />",
                     "[Password image is attached to this email.]");
             }
-            bodyFile = File.createTempFile("authme-agentmail-", ".html");
+            File cwdDir = new File(".").getAbsoluteFile();
+            bodyFile = File.createTempFile("authme-agentmail-", ".html", cwdDir);
             bodyFile.deleteOnExit();
             java.nio.file.Files.write(bodyFile.toPath(),
                 (body == null ? "" : body).getBytes(StandardCharsets.UTF_8));
@@ -177,7 +181,8 @@ public class AgentMailSender implements MailSender {
         command.add(makeRelativePath(bodyFile));
         if (imageFile != null) {
             command.add("--attachment");
-            command.add(imageFile.getAbsolutePath());
+            // Attachment paths must also be relative to the current directory
+            command.add(makeRelativePath(imageFile));
         }
         return command;
     }
