@@ -172,13 +172,37 @@ public class AgentMailSender implements MailSender {
         command.add(subject == null ? "" : subject);
         // Use --body-file (relative path) for HTML content to avoid quoting issues
         // with <, >, & characters across the two CLI phases.
+        // The CLI requires the path to be RELATIVE to the current working directory.
         command.add("--body-file");
-        command.add(bodyFile.getAbsolutePath());
+        command.add(makeRelativePath(bodyFile));
         if (imageFile != null) {
             command.add("--attachment");
             command.add(imageFile.getAbsolutePath());
         }
         return command;
+    }
+
+    /**
+     * Converts an absolute file path into a path relative to the JVM's current
+     * working directory, using the platform-specific separator. The agently-cli
+     * requires {@code --body-file} to be relative to the cwd; using an
+     * absolute path (e.g. inside a temp directory) causes it to fail with
+     * "must be a relative path" and exit code 1.
+     *
+     * @param file the file to relativize
+     * @return relative path string, or absolute path as fallback
+     */
+    private static String makeRelativePath(File file) {
+        try {
+            String cwd = new File(".").getAbsoluteFile().getCanonicalPath();
+            String abs = file.getAbsoluteFile().getCanonicalPath();
+            if (abs.startsWith(cwd + File.separator)) {
+                return abs.substring(cwd.length() + 1);
+            }
+        } catch (Exception ignored) {
+            // fall through to absolute path
+        }
+        return file.getAbsolutePath();
     }
 
     /**
