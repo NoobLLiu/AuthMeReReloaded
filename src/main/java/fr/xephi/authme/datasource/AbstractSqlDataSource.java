@@ -54,7 +54,7 @@ public abstract class AbstractSqlDataSource implements DataSource {
         return columnsHandler.insert(auth,
             AuthMeColumns.NAME, AuthMeColumns.NICK_NAME, AuthMeColumns.PASSWORD, AuthMeColumns.SALT,
             AuthMeColumns.EMAIL, AuthMeColumns.REGISTRATION_DATE, AuthMeColumns.REGISTRATION_IP,
-            AuthMeColumns.UUID);
+            AuthMeColumns.UUID, AuthMeColumns.SCHEMA_VERSION);
     }
 
     @Override
@@ -110,6 +110,11 @@ public abstract class AbstractSqlDataSource implements DataSource {
     @Override
     public boolean updateEmail(PlayerAuth auth) {
         return columnsHandler.update(auth, AuthMeColumns.EMAIL);
+    }
+
+    @Override
+    public boolean updateSchemaVersion(PlayerAuth auth) {
+        return columnsHandler.update(auth, AuthMeColumns.SCHEMA_VERSION);
     }
 
     @Override

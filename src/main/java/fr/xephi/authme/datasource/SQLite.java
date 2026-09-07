@@ -187,6 +187,11 @@ public class SQLite extends AbstractSqlDataSource {
                     + " ADD COLUMN " + col.TOTP_KEY + " VARCHAR(32);");
             }
 
+            if (isColumnMissing(md, col.SCHEMA_VERSION)) {
+                st.executeUpdate("ALTER TABLE " + tableName
+                    + " ADD COLUMN " + col.SCHEMA_VERSION + " INT;");
+            }
+
             if (!col.PLAYER_UUID.isEmpty() && isColumnMissing(md, col.PLAYER_UUID)) {
                 st.executeUpdate("ALTER TABLE " + tableName
                     + " ADD COLUMN " + col.PLAYER_UUID + " VARCHAR(36)");
@@ -384,6 +389,7 @@ public class SQLite extends AbstractSqlDataSource {
             .locWorld(row.getString(col.LASTLOC_WORLD))
             .locYaw(row.getFloat(col.LASTLOC_YAW))
             .locPitch(row.getFloat(col.LASTLOC_PITCH))
+            .schemaVersion(getNullableInt(row, col.SCHEMA_VERSION))
             .build();
     }
 

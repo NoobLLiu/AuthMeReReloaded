@@ -1,43 +1,38 @@
 package fr.xephi.authme.command.executable.register;
 
-import fr.xephi.authme.ConsoleLogger;
 import fr.xephi.authme.command.PlayerCommand;
 import fr.xephi.authme.data.captcha.RegistrationCaptchaManager;
-import fr.xephi.authme.datasource.DataSource;
 import fr.xephi.authme.mail.EmailService;
 import fr.xephi.authme.message.MessageKey;
-import fr.xephi.authme.output.ConsoleLoggerFactory;
 import fr.xephi.authme.process.Management;
-import fr.xephi.authme.process.register.RegisterSecondaryArgument;
-import fr.xephi.authme.process.register.RegistrationType;
-import fr.xephi.authme.process.register.executors.EmailRegisterParams;
+import fr.xephi.authme.process.register.RegistrationMethod;
 import fr.xephi.authme.process.register.executors.PasswordRegisterParams;
-import fr.xephi.authme.process.register.executors.RegistrationMethod;
 import fr.xephi.authme.process.register.executors.TwoFactorRegisterParams;
 import fr.xephi.authme.security.HashAlgorithm;
 import fr.xephi.authme.service.BukkitService;
 import fr.xephi.authme.service.CommonService;
+import fr.xephi.authme.service.PendingRegistrationCache;
 import fr.xephi.authme.service.ValidationService;
-import fr.xephi.authme.settings.properties.EmailSettings;
-import fr.xephi.authme.settings.properties.RegistrationSettings;
+import fr.xephi.authme.service.ValidationService.ValidationResult;
 import fr.xephi.authme.settings.properties.SecuritySettings;
+import fr.xephi.authme.util.RandomStringUtils;
 import org.bukkit.entity.Player;
 
 import javax.inject.Inject;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.List;
-
-import static fr.xephi.authme.process.register.RegisterSecondaryArgument.CONFIRMATION;
-import static fr.xephi.authme.process.register.RegisterSecondaryArgument.EMAIL_MANDATORY;
-import static fr.xephi.authme.process.register.RegisterSecondaryArgument.EMAIL_OPTIONAL;
-import static fr.xephi.authme.process.register.RegisterSecondaryArgument.NONE;
-import static fr.xephi.authme.settings.properties.RegistrationSettings.REGISTER_SECOND_ARGUMENT;
+import java.util.Locale;
 
 /**
  * Command for /register.
+ *
+ * <p>v2 registration is a two-phase flow: the player first binds an email address
+ * with {@code /register <email>} and confirms the verification code with
+ * {@code /email confirm <code>}. Once the email address is confirmed, the password
+ * is set with {@code /register <password> <confirmPassword>}.</p>
  */
 public class RegisterCommand extends PlayerCommand {
-
-    private final ConsoleLogger logger = ConsoleLoggerFactory.get(RegisterCommand.class);
 
     @Inject
     private Management management;
@@ -49,9 +44,6 @@ public class RegisterCommand extends PlayerCommand {
     private BukkitService bukkitService;
 
     @Inject
-    private DataSource dataSource;
-
-    @Inject
     private EmailService emailService;
 
     @Inject
@@ -60,29 +52,41 @@ public class RegisterCommand extends PlayerCommand {
     @Inject
     private RegistrationCaptchaManager registrationCaptchaManager;
 
+    @Inject
+    private PendingRegistrationCache pendingRegistrationCache;
+
     @Override
     public void runCommand(Player player, List<String> arguments) {
-        if (!isCaptchaFulfilled(player)) {
-            return; // isCaptchaFulfilled handles informing the player on failure
-        }
-
         if (commonService.getProperty(SecuritySettings.PASSWORD_HASH) == HashAlgorithm.TWO_FACTOR) {
-            //for two factor auth we don't need to check the usage
+            // for two factor auth we don't need to check the usage
             management.performRegister(RegistrationMethod.TWO_FACTOR_REGISTRATION,
                 TwoFactorRegisterParams.of(player));
             return;
-        } else if (arguments.size() < 1) {
+        }
+
+        if (!isCaptchaFulfilled(player)) {
+            return; // isCaptchaFulfilled handles informing the player on failure
+        }
+        if (arguments.isEmpty()) {
             commonService.send(player, MessageKey.USAGE_REGISTER);
             return;
         }
 
-        RegistrationType registrationType = commonService.getProperty(RegistrationSettings.REGISTRATION_TYPE);
-        if (registrationType == RegistrationType.PASSWORD) {
-            handlePasswordRegistration(player, arguments);
-        } else if (registrationType == RegistrationType.EMAIL) {
-            handleEmailRegistration(player, arguments);
+        PendingRegistrationCache.PendingRegistration pending =
+            pendingRegistrationCache.get(player.getName());
+        if (pending == null) {
+            // Phase 1: bind an email address, a verification code is sent to it
+            handleEmailPhase(player, arguments);
+        } else if (!pending.isVerified()) {
+            // Re-entering an email address replaces the pending one and re-sends the code
+            if (arguments.size() == 1 && validationService.validateEmail(arguments.get(0))) {
+                handleEmailPhase(player, arguments);
+            } else {
+                commonService.send(player, MessageKey.EMAIL_VERIFICATION_SENT);
+            }
         } else {
-            throw new IllegalStateException("Unknown registration type '" + registrationType + "'");
+            // Phase 2: set the password of the confirmed email address
+            handlePasswordPhase(player, arguments);
         }
     }
 
@@ -105,118 +109,71 @@ public class RegisterCommand extends PlayerCommand {
         return true;
     }
 
-    private void handlePasswordRegistration(Player player, List<String> arguments) {
-        if (isSecondArgValidForPasswordRegistration(player, arguments)) {
-            final String password = arguments.get(0);
-            final String email = getEmailIfAvailable(arguments);
-
-            management.performRegister(RegistrationMethod.PASSWORD_REGISTRATION,
-                PasswordRegisterParams.of(player, password, email));
-        }
-    }
-
-    private String getEmailIfAvailable(List<String> arguments) {
-        if (arguments.size() >= 2) {
-            RegisterSecondaryArgument secondArgType = commonService.getProperty(REGISTER_SECOND_ARGUMENT);
-            if (secondArgType == EMAIL_MANDATORY || secondArgType == EMAIL_OPTIONAL) {
-                return arguments.get(1);
-            }
-        }
-        return null;
-    }
-
     /**
-     * Verifies that the second argument is valid (based on the configuration)
-     * to perform a password registration. The player is informed if the check
-     * is unsuccessful.
+     * Phase 1 of the registration: validates the given email address and sends a
+     * verification code to it. The registration continues once the player confirms
+     * the code with {@code /email confirm <code>}.
      *
      * @param player the player to register
      * @param arguments the provided arguments
-     * @return true if valid, false otherwise
      */
-    private boolean isSecondArgValidForPasswordRegistration(Player player, List<String> arguments) {
-        RegisterSecondaryArgument secondArgType = commonService.getProperty(REGISTER_SECOND_ARGUMENT);
-        // cases where args.size < 2
-        if (secondArgType == NONE || secondArgType == EMAIL_OPTIONAL && arguments.size() < 2) {
-            return true;
-        } else if (arguments.size() < 2) {
-            commonService.send(player, MessageKey.USAGE_REGISTER);
-            return false;
-        }
-
-        if (secondArgType == CONFIRMATION) {
-            if (arguments.get(0).equals(arguments.get(1))) {
-                return true;
-            } else {
-                commonService.send(player, MessageKey.PASSWORD_MATCH_ERROR);
-                return false;
-            }
-        } else if (secondArgType == EMAIL_MANDATORY || secondArgType == EMAIL_OPTIONAL) {
-            if (validationService.validateEmail(arguments.get(1))) {
-                return true;
-            } else {
-                commonService.send(player, MessageKey.INVALID_EMAIL);
-                return false;
-            }
-        } else {
-            throw new IllegalStateException("Unknown secondary argument type '" + secondArgType + "'");
-        }
-    }
-
-    private void handleEmailRegistration(Player player, List<String> arguments) {
-        if (!emailService.hasAllInformation()) {
-            commonService.send(player, MessageKey.INCOMPLETE_EMAIL_SETTINGS);
-            logger.warning("Cannot register player '" + player.getName() + "': no email or password is set "
-                + "to send emails from. Please adjust your config at " + EmailSettings.MAIL_ACCOUNT.getPath());
-            return;
-        }
-
+    private void handleEmailPhase(Player player, List<String> arguments) {
         final String email = arguments.get(0);
         if (!validationService.validateEmail(email)) {
             commonService.send(player, MessageKey.INVALID_EMAIL);
-        } else if (isSecondArgValidForEmailRegistration(player, arguments)) {
-            management.performRegister(RegistrationMethod.EMAIL_REGISTRATION,
-                EmailRegisterParams.of(player, email));
-            if (commonService.getProperty(RegistrationSettings.UNREGISTER_ON_EMAIL_VERIFICATION_FAILURE) && commonService.getProperty(RegistrationSettings.UNREGISTER_AFTER_MINUTES) > 0) {
-                bukkitService.runTaskLater(player, () -> {
-                    if (dataSource.getAuth(player.getName()) != null) {
-                        if (dataSource.getAuth(player.getName()).getLastLogin() == null) {
-                            management.performUnregisterByAdmin(null, player.getName(), player);
-                        }
-                    }
-                }, 60 * 20 * commonService.getProperty(RegistrationSettings.UNREGISTER_AFTER_MINUTES));
-            }
+            return;
         }
+
+        final String playerName = player.getName().toLowerCase(Locale.ROOT);
+        // Database and mail operations are performed asynchronously, as in the other async processes
+        bukkitService.runTaskAsynchronously(() -> {
+            if (!validationService.isEmailFreeForRegistration(email, player)) {
+                commonService.send(player, MessageKey.EMAIL_ALREADY_USED_ERROR);
+            } else if (!emailService.hasAllInformation()) {
+                commonService.send(player, MessageKey.INCOMPLETE_EMAIL_SETTINGS);
+            } else {
+                String code = RandomStringUtils.generateNum(6);
+                pendingRegistrationCache.put(playerName, email, code);
+                SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy'-'MM'-'dd'-' HH:mm:ss");
+                String time = dateFormat.format(new Date(System.currentTimeMillis()));
+                emailService.sendVerificationMail(player.getName(), email, code, time);
+                commonService.send(player, MessageKey.EMAIL_VERIFICATION_SENT);
+            }
+        });
     }
 
     /**
-     * Verifies that the second argument is valid (based on the configuration)
-     * to perform an email registration. The player is informed if the check
-     * is unsuccessful.
+     * Phase 2 of the registration: sets the password of the confirmed email address
+     * and creates the account.
      *
      * @param player the player to register
      * @param arguments the provided arguments
-     * @return true if valid, false otherwise
      */
-    private boolean isSecondArgValidForEmailRegistration(Player player, List<String> arguments) {
-        RegisterSecondaryArgument secondArgType = commonService.getProperty(REGISTER_SECOND_ARGUMENT);
-        // cases where args.size < 2
-        if (secondArgType == NONE || secondArgType == EMAIL_OPTIONAL && arguments.size() < 2) {
-            return true;
-        } else if (arguments.size() < 2) {
-            commonService.send(player, MessageKey.USAGE_REGISTER);
-            return false;
+    private void handlePasswordPhase(Player player, List<String> arguments) {
+        if (arguments.size() < 2) {
+            commonService.send(player, MessageKey.REGISTER_USAGE_PASSWORD);
+            return;
+        }
+        final String password = arguments.get(0);
+        if (!password.equals(arguments.get(1))) {
+            commonService.send(player, MessageKey.PASSWORD_MATCH_ERROR);
+            return;
         }
 
-        if (secondArgType == EMAIL_OPTIONAL || secondArgType == EMAIL_MANDATORY || secondArgType == CONFIRMATION) {
-            if (arguments.get(0).equals(arguments.get(1))) {
-                return true;
-            } else {
-                commonService.send(player, MessageKey.USAGE_REGISTER);
-                return false;
-            }
-        } else {
-            throw new IllegalStateException("Unknown secondary argument type '" + secondArgType + "'");
+        // Fail fast on an invalid password so the confirmed email does not need to be verified again
+        ValidationResult passwordValidation = validationService.validatePassword(password, player.getName());
+        if (passwordValidation.hasError()) {
+            commonService.send(player, passwordValidation.getMessageKey(), passwordValidation.getArgs());
+            return;
         }
+
+        PendingRegistrationCache.PendingRegistration pending =
+            pendingRegistrationCache.take(player.getName());
+        if (pending == null) {
+            commonService.send(player, MessageKey.REGISTER_USAGE_EMAIL);
+            return;
+        }
+        management.performRegister(RegistrationMethod.PASSWORD_REGISTRATION,
+            PasswordRegisterParams.of(player, password, pending.getEmail()));
     }
 }

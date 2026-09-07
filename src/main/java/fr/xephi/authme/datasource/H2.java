@@ -185,6 +185,11 @@ public class H2 extends AbstractSqlDataSource {
                     + " ADD COLUMN IF NOT EXISTS " + col.TOTP_KEY + " VARCHAR(32);");
             }
 
+            if (isColumnMissing(md, col.SCHEMA_VERSION)) {
+                st.executeUpdate("ALTER TABLE " + tableName
+                    + " ADD COLUMN IF NOT EXISTS " + col.SCHEMA_VERSION + " INT;");
+            }
+
             if (!col.PLAYER_UUID.isEmpty() && isColumnMissing(md, col.PLAYER_UUID)) {
                 st.executeUpdate("ALTER TABLE " + tableName
                     + " ADD COLUMN IF NOT EXISTS " + col.PLAYER_UUID + " VARCHAR(36)");
@@ -382,6 +387,7 @@ public class H2 extends AbstractSqlDataSource {
             .locWorld(row.getString(col.LASTLOC_WORLD))
             .locYaw(row.getFloat(col.LASTLOC_YAW))
             .locPitch(row.getFloat(col.LASTLOC_PITCH))
+            .schemaVersion(getNullableInt(row, col.SCHEMA_VERSION))
             .build();
     }
 

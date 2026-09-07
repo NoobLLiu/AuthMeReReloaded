@@ -109,6 +109,10 @@ public final class DatabaseSettings implements SettingsHolder {
     public static final Property<String> MYSQL_COL_TOTP_KEY =
         newProperty("DataSource.mySQLtotpKey", "totp");
 
+    @Comment("Column for storing the account schema version (for account migrations, may be empty)")
+    public static final Property<String> MYSQL_COL_SCHEMA_VERSION =
+        newProperty("DataSource.mySQLColumnSchemaVersion", "schema_version");
+
     @Comment("Column for storing the player's last IP")
     public static final Property<String> MYSQL_COL_LAST_IP =
         newProperty("DataSource.mySQLColumnIp", "ip");

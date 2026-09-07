@@ -136,6 +136,14 @@ public interface DataSource extends Reloadable {
     boolean updateEmail(PlayerAuth auth);
 
     /**
+     * Updates the account schema version of the given auth in the data source.
+     *
+     * @param auth The PlayerAuth whose schema version should be updated
+     * @return True upon success, false upon failure
+     */
+    boolean updateSchemaVersion(PlayerAuth auth);
+
+    /**
      * Close the underlying connections to the data source.
      */
     void closeConnection();

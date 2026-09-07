@@ -21,6 +21,7 @@ import fr.xephi.authme.permission.PlayerStatePermission;
 import fr.xephi.authme.process.AsynchronousProcess;
 import fr.xephi.authme.process.SyncProcessManager;
 import fr.xephi.authme.security.PasswordSecurity;
+import fr.xephi.authme.service.AccountMigrationService;
 import fr.xephi.authme.service.BukkitService;
 import fr.xephi.authme.service.CommonService;
 import fr.xephi.authme.service.SessionService;
@@ -83,6 +84,8 @@ public class AsynchronousLogin implements AsynchronousProcess {
 
     @Inject
     private SessionService sessionService;
+    @Inject
+    private AccountMigrationService accountMigrationService;
     @Inject
     private Settings settings;
     @Inject
@@ -272,6 +275,13 @@ public class AsynchronousLogin implements AsynchronousProcess {
      */
     public void performLogin(Player player, PlayerAuth auth) {
         if (player.isOnline()) {
+            // Intercept logins of accounts pending a schema migration: the player remains
+            // unauthenticated and must bind an email address before being allowed to play
+            if (accountMigrationService.isMigrationPending(auth)) {
+                accountMigrationService.handlePendingMigration(player, auth);
+                return;
+            }
+
             boolean isFirstLogin = (auth.getLastLogin() == null);
 
             // Update auth to reflect this new login

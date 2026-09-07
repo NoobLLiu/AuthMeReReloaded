@@ -300,6 +300,11 @@ public class MySQL extends AbstractSqlDataSource {
                     + " MODIFY " + col.TOTP_KEY + " VARCHAR(32);");
             }
 
+            if (isColumnMissing(md, col.SCHEMA_VERSION)) {
+                st.executeUpdate("ALTER TABLE " + tableName
+                    + " ADD COLUMN " + col.SCHEMA_VERSION + " INT;");
+            }
+
             if (!col.PLAYER_UUID.isEmpty() && isColumnMissing(md, col.PLAYER_UUID)) {
                 st.executeUpdate("ALTER TABLE " + tableName
                     + " ADD COLUMN " + col.PLAYER_UUID + " VARCHAR(36)");
@@ -519,6 +524,7 @@ public class MySQL extends AbstractSqlDataSource {
             .locYaw(row.getFloat(col.LASTLOC_YAW))
             .locPitch(row.getFloat(col.LASTLOC_PITCH))
             .uuid(uuid)
+            .schemaVersion(getNullableInt(row, col.SCHEMA_VERSION))
             .build();
     }
 }

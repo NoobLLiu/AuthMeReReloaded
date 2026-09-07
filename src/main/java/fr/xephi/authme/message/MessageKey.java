@@ -95,6 +95,15 @@ public enum MessageKey {
     /** Usage: /register &lt;password&gt; &lt;ConfirmPassword&gt; */
     USAGE_REGISTER("registration.command_usage"),
 
+    /** Please enter your email address first: /register &lt;email&gt; */
+    REGISTER_USAGE_EMAIL("registration.command_usage_email"),
+
+    /** Usage: /register &lt;password&gt; &lt;ConfirmPassword&gt; */
+    REGISTER_USAGE_PASSWORD("registration.command_usage_password"),
+
+    /** Email address confirmed! Now set your password with /register &lt;password&gt; &lt;ConfirmPassword&gt; */
+    REGISTER_EMAIL_CONFIRMED("registration.email_confirmed"),
+
     /** Usage: /unregister &lt;password&gt; */
     USAGE_UNREGISTER("unregister.command_usage"),
 
@@ -226,6 +235,12 @@ public enum MessageKey {
 
     /** No pending email change. Use /email add or /email change first. */
     EMAIL_NO_PENDING_CHANGE("email.no_pending_change"),
+
+    /** Your account needs to be bound to an email address before you can play! Use /email add &lt;email&gt; */
+    EMAIL_MIGRATION_REQUIRED("email.migration_required"),
+
+    /** Email address bound successfully! Your account has been upgraded, welcome! */
+    EMAIL_MIGRATION_COMPLETE("email.migration_complete"),
 
     /** Usage: /email confirm <code> */
     USAGE_EMAIL_CONFIRM("email.usage_email_confirm"),

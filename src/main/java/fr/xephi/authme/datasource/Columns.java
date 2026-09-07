@@ -15,6 +15,7 @@ public final class Columns {
     public final String PASSWORD;
     public final String SALT;
     public final String TOTP_KEY;
+    public final String SCHEMA_VERSION;
     public final String LAST_IP;
     public final String LAST_LOGIN;
     public final String GROUP;
@@ -38,6 +39,7 @@ public final class Columns {
         PASSWORD          = settings.getProperty(DatabaseSettings.MYSQL_COL_PASSWORD);
         SALT              = settings.getProperty(DatabaseSettings.MYSQL_COL_SALT);
         TOTP_KEY          = settings.getProperty(DatabaseSettings.MYSQL_COL_TOTP_KEY);
+        SCHEMA_VERSION    = settings.getProperty(DatabaseSettings.MYSQL_COL_SCHEMA_VERSION);
         LAST_IP           = settings.getProperty(DatabaseSettings.MYSQL_COL_LAST_IP);
         LAST_LOGIN        = settings.getProperty(DatabaseSettings.MYSQL_COL_LASTLOGIN);
         GROUP             = settings.getProperty(DatabaseSettings.MYSQL_COL_GROUP);
