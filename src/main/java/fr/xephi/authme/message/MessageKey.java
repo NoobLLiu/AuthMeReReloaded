@@ -104,6 +104,12 @@ public enum MessageKey {
     /** Email address confirmed! Now set your password with /register &lt;password&gt; &lt;ConfirmPassword&gt; */
     REGISTER_EMAIL_CONFIRMED("registration.email_confirmed"),
 
+    /** This email already has a password: your account was registered with it and you were logged in automatically. */
+    REGISTER_PASSWORD_REUSED("registration.password_reused"),
+
+    /** This email is already bound to existing accounts: once verified, its password will be adopted and no new password is needed. */
+    REGISTER_EMAIL_IN_USE_HINT("registration.email_in_use_hint"),
+
     /** Usage: /unregister &lt;password&gt; */
     USAGE_UNREGISTER("unregister.command_usage"),
 
@@ -241,6 +247,15 @@ public enum MessageKey {
 
     /** Email address bound successfully! Your account has been upgraded, welcome! */
     EMAIL_MIGRATION_COMPLETE("email.migration_complete"),
+
+    /** Your account has been migrated, but you must set a new password: /register <password> <ConfirmPassword> */
+    EMAIL_MIGRATION_PASSWORD_REQUIRED("email.migration_password_required"),
+
+    /** This email already has a password; it has been adopted, no need to set a new one. */
+    EMAIL_PASSWORD_ADOPTED("email.password_adopted"),
+
+    /** The password of the accounts bound to your email address has been changed. */
+    EMAIL_PASSWORD_SYNCED("email.password_synced"),
 
     /** Usage: /email confirm <code> */
     USAGE_EMAIL_CONFIRM("email.usage_email_confirm"),

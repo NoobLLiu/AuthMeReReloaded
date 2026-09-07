@@ -23,6 +23,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 
+import static fr.xephi.authme.datasource.SqlDataSourceUtils.getNullableInt;
 import static fr.xephi.authme.datasource.SqlDataSourceUtils.getNullableLong;
 import static fr.xephi.authme.datasource.SqlDataSourceUtils.logSqlException;
 

@@ -223,6 +223,11 @@ public class CacheDataSource implements DataSource {
     }
 
     @Override
+    public List<String> getAllAuthsByEmail(String email) {
+        return source.getAllAuthsByEmail(email);
+    }
+
+    @Override
     public void purgeRecords(Collection<String> banned) {
         source.purgeRecords(banned);
         cachedAuths.invalidateAll(banned);

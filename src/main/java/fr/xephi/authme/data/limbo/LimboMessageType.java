@@ -8,6 +8,8 @@ public enum LimboMessageType {
 
     TOTP_CODE,
 
-    EMAIL_MIGRATION
+    EMAIL_MIGRATION,
+
+    PASSWORD_MIGRATION
 
 }

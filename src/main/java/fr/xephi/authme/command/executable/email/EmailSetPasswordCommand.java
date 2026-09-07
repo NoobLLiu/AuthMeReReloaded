@@ -2,12 +2,15 @@ package fr.xephi.authme.command.executable.email;
 
 import fr.xephi.authme.ConsoleLogger;
 import fr.xephi.authme.command.PlayerCommand;
+import fr.xephi.authme.data.auth.PlayerAuth;
+import fr.xephi.authme.data.auth.PlayerCache;
 import fr.xephi.authme.datasource.DataSource;
 import fr.xephi.authme.message.MessageKey;
 import fr.xephi.authme.output.ConsoleLoggerFactory;
 import fr.xephi.authme.security.PasswordSecurity;
 import fr.xephi.authme.security.crypts.HashedPassword;
 import fr.xephi.authme.service.CommonService;
+import fr.xephi.authme.service.EmailPasswordService;
 import fr.xephi.authme.service.PasswordRecoveryService;
 import fr.xephi.authme.service.ValidationService;
 import fr.xephi.authme.service.ValidationService.ValidationResult;
@@ -38,6 +41,12 @@ public class EmailSetPasswordCommand extends PlayerCommand {
     @Inject
     private ValidationService validationService;
 
+    @Inject
+    private PlayerCache playerCache;
+
+    @Inject
+    private EmailPasswordService emailPasswordService;
+
     @Override
     protected void runCommand(Player player, List<String> arguments) {
         if (recoveryService.canChangePassword(player)) {
@@ -51,6 +60,14 @@ public class EmailSetPasswordCommand extends PlayerCommand {
                 recoveryService.removeFromSuccessfulRecovery(player);
                 logger.info("Player '" + name + "' has changed their password from recovery");
                 commonService.send(player, MessageKey.PASSWORD_CHANGED_SUCCESS);
+                // The password follows the email: propagate it to the other accounts bound to it
+                PlayerAuth auth = playerCache.getAuth(name);
+                if (auth == null) {
+                    auth = dataSource.getAuth(name);
+                }
+                if (auth != null) {
+                    emailPasswordService.syncPasswordToEmail(auth.getEmail(), hashedPassword, name);
+                }
             } else {
                 commonService.send(player, result.getMessageKey(), result.getArgs());
             }

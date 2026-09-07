@@ -128,6 +128,14 @@ public interface DataSource extends Reloadable {
     int countAuthsByEmail(String email);
 
     /**
+     * Return all usernames associated with the given email address.
+     *
+     * @param email The email address to look up
+     * @return Usernames associated with the given email address
+     */
+    List<String> getAllAuthsByEmail(String email);
+
+    /**
      * Update the email of the PlayerAuth in the data source.
      *
      * @param auth The PlayerAuth whose email should be updated

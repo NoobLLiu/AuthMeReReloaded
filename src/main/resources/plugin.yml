@@ -44,46 +44,46 @@ libraries:
   - net.kyori:adventure-text-serializer-gson:${dependencies.adventure.version}
 commands:
   authme:
-    description: AuthMe op commands
-    usage: /authme register|unregister|forcelogin|password|lastlogin|accounts|email|setemail|getip|totp|disabletotp|spawn|setspawn|firstspawn|setfirstspawn|purge|purgeplayer|backup|resetpos|purgebannedplayers|switchantibot|reload|version|converter|messages|recent|debug
+    description: AuthMe 管理员命令
+    usage: /authme <子命令> ——输入 /authme help 查看全部子命令（注册、注销、改密码、查邮箱、备份、重载等）
   email:
-    description: Add email or recover password
-    usage: /email show|add|change|recover|code|setpassword
+    description: 邮箱命令（绑定、换绑、验证、找回密码）
+    usage: /email <show|add|change|confirm|recover|code|setpassword> ——输入 /email help 查看说明
   login:
-    description: Login command
-    usage: /login <password>
+    description: 登录命令
+    usage: /login <密码>（同一邮箱下的账号使用相同密码）
     aliases:
     - l
   logout:
-    description: Logout command
+    description: 登出命令
     usage: /logout
   register:
-    description: Register an account
-    usage: /register [password] [verifyPassword]
+    description: 注册命令（先绑定邮箱，再设置密码）
+    usage: /register <邮箱> ——收到验证码后输入 /email confirm <验证码>，再输入 /register <新密码> <重复新密码> 完成注册
     aliases:
     - reg
   unregister:
-    description: Unregister an account
-    usage: /unregister <password>
+    description: 注销账号命令
+    usage: /unregister <密码>
     aliases:
     - unreg
   changepassword:
-    description: Change password of an account
-    usage: /changepassword <oldPassword> <newPassword>
+    description: 修改密码命令（会同步到同邮箱的所有账号）
+    usage: /changepassword <旧密码> <新密码>
     aliases:
     - changepass
     - cp
   totp:
-    description: TOTP commands
-    usage: /totp code|add|confirm|remove
+    description: 两步验证（2FA）命令
+    usage: /totp <code|add|confirm|remove> ——输入 /totp help 查看说明
     aliases:
     - 2fa
   captcha:
-    description: Captcha command
-    usage: /captcha <captcha>
+    description: 验证码命令
+    usage: /captcha <验证码>
   verification:
-    description: Verification command
-    usage: /verification <code>
+    description: 身份验证命令
+    usage: /verification <验证码>
 permissions:
   authme.admin.*:
     description: Gives access to all admin commands

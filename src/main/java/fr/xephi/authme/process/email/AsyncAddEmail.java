@@ -13,6 +13,7 @@ import fr.xephi.authme.process.AsynchronousProcess;
 import fr.xephi.authme.service.AccountMigrationService;
 import fr.xephi.authme.service.BukkitService;
 import fr.xephi.authme.service.CommonService;
+import fr.xephi.authme.service.EmailPasswordService;
 import fr.xephi.authme.service.PendingEmailChangeCache;
 import fr.xephi.authme.service.ValidationService;
 import fr.xephi.authme.util.RandomStringUtils;
@@ -61,6 +62,9 @@ public class AsyncAddEmail implements AsynchronousProcess {
     private AccountMigrationService accountMigrationService;
 
     @Inject
+    private EmailPasswordService emailPasswordService;
+
+    @Inject
     private LimboService limboService;
 
     AsyncAddEmail() {
@@ -97,7 +101,9 @@ public class AsyncAddEmail implements AsynchronousProcess {
     /**
      * Validates the given email and sends a verification code to it. The email
      * is only persisted once the player confirms the code with
-     * {@code /email confirm <code>}.
+     * {@code /email confirm <code>}. The same email may be bound by multiple
+     * accounts (v2 rule), so an email already in use is admitted; the password
+     * then follows the email (it is adopted on confirmation).
      *
      * @param player the player to add the email to
      * @param playerName the lowercased player name
@@ -106,8 +112,6 @@ public class AsyncAddEmail implements AsynchronousProcess {
     private void dispatchVerificationCode(Player player, String playerName, String email) {
         if (!validationService.validateEmail(email)) {
             service.send(player, MessageKey.INVALID_EMAIL);
-        } else if (!validationService.isEmailFreeForRegistration(email, player)) {
-            service.send(player, MessageKey.EMAIL_ALREADY_USED_ERROR);
         } else if (!emailService.hasAllInformation()) {
             service.send(player, MessageKey.INCOMPLETE_EMAIL_SETTINGS);
         } else {
@@ -118,6 +122,10 @@ public class AsyncAddEmail implements AsynchronousProcess {
                 service.send(player, MessageKey.EMAIL_ADD_NOT_ALLOWED);
                 return;
             }
+            // The password follows the email: if the email is already bound to other
+            // accounts and has a password, it will be adopted and no new one is needed
+            boolean passwordReused = emailPasswordService.findPasswordByEmail(email) != null;
+
             // Phase 1: generate code, send verification email, cache pending change
             String code = RandomStringUtils.generateNum(6);
             SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy'-'MM'-'dd'-' HH:mm:ss");
@@ -125,6 +133,9 @@ public class AsyncAddEmail implements AsynchronousProcess {
             pendingEmailChangeCache.put(playerName, email, code);
             emailService.sendVerificationMail(player.getName(), email, code, time);
             service.send(player, MessageKey.EMAIL_VERIFICATION_SENT);
+            if (passwordReused) {
+                service.send(player, MessageKey.REGISTER_EMAIL_IN_USE_HINT);
+            }
         }
     }
 

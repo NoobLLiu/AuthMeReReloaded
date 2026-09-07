@@ -50,6 +50,9 @@ public class PasswordRecoveryService implements Reloadable, HasCleanup {
     private RecoveryCodeService recoveryCodeService;
 
     @Inject
+    private EmailPasswordService emailPasswordService;
+
+    @Inject
     private Messages messages;
 
     private ExpiringSet<String> emailCooldown;
@@ -89,6 +92,8 @@ public class PasswordRecoveryService implements Reloadable, HasCleanup {
     /**
      * Generate a new password and send it to the player via
      * email. This will update the database with the new password.
+     * Since v2 the password follows the email address: the new password is
+     * propagated to all accounts bound to the same email.
      *
      * @param player The player recovering their password.
      * @param email The email to send the password to.
@@ -107,6 +112,8 @@ public class PasswordRecoveryService implements Reloadable, HasCleanup {
         logger.info("Generating new password for '" + name + "'");
 
         dataSource.updatePassword(name, hashNew);
+        // The password follows the email: propagate it to the other accounts bound to it
+        emailPasswordService.syncPasswordToEmail(email, hashNew, name);
         boolean couldSendMail = emailService.sendPasswordMail(name, email, thePass, dateFormat.format(date));
         if (couldSendMail) {
             commonService.send(player, MessageKey.RECOVERY_EMAIL_SENT_MESSAGE);

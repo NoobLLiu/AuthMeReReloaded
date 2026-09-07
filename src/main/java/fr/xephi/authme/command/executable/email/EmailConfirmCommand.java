@@ -8,9 +8,14 @@ import fr.xephi.authme.datasource.DataSource;
 import fr.xephi.authme.events.EmailConfirmedEvent;
 import fr.xephi.authme.message.MessageKey;
 import fr.xephi.authme.output.ConsoleLoggerFactory;
+import fr.xephi.authme.process.Management;
 import fr.xephi.authme.process.login.AsynchronousLogin;
+import fr.xephi.authme.process.register.executors.EmailAdoptRegisterParams;
+import fr.xephi.authme.process.register.executors.RegistrationMethod;
+import fr.xephi.authme.security.crypts.HashedPassword;
 import fr.xephi.authme.service.AccountMigrationService;
 import fr.xephi.authme.service.CommonService;
+import fr.xephi.authme.service.EmailPasswordService;
 import fr.xephi.authme.service.PendingEmailChangeCache;
 import fr.xephi.authme.service.PendingRegistrationCache;
 import org.bukkit.Bukkit;
@@ -49,10 +54,16 @@ public class EmailConfirmCommand extends PlayerCommand {
     private AccountMigrationService accountMigrationService;
 
     @Inject
+    private EmailPasswordService emailPasswordService;
+
+    @Inject
     private PlayerCache playerCache;
 
     @Inject
     private DataSource dataSource;
+
+    @Inject
+    private Management management;
 
     @Inject
     private AsynchronousLogin asynchronousLogin;
@@ -92,10 +103,22 @@ public class EmailConfirmCommand extends PlayerCommand {
         // Phase 2: code matches — persist the new email
         PlayerAuth auth = playerCache.getAuth(playerName);
         auth.setEmail(pending.getNewEmail());
-        if (dataSource.updateEmail(auth)) {
+        // The password follows the email: if the new email already has a password
+        // (other accounts are bound to it), it is adopted by this account
+        HashedPassword emailPassword = emailPasswordService.findPasswordByEmail(pending.getNewEmail());
+        boolean saved = dataSource.updateEmail(auth);
+        if (emailPassword != null) {
+            auth.setPassword(emailPassword);
+            saved = saved && dataSource.updatePassword(auth);
+        }
+        if (saved) {
             playerCache.updatePlayer(auth);
             pendingEmailChangeCache.remove(playerName);
             commonService.send(player, MessageKey.EMAIL_CONFIRM_SUCCESS);
+            if (emailPassword != null) {
+                emailPasswordService.syncPasswordToEmail(pending.getNewEmail(), emailPassword, playerName);
+                commonService.send(player, MessageKey.EMAIL_PASSWORD_ADOPTED);
+            }
             // 通知其他插件：邮箱绑定确认完成（数据整合插件据此向网站后端同步）
             Bukkit.getPluginManager().callEvent(new EmailConfirmedEvent(player, pending.getNewEmail()));
         } else {
@@ -105,8 +128,11 @@ public class EmailConfirmCommand extends PlayerCommand {
     }
 
     /**
-     * Handles the verification code of a v1 account pending migration. Upon success the
-     * account is migrated to the current schema version and the intercepted login resumes.
+     * Handles the verification code of a v1 account pending migration. If the email
+     * already has a password (other accounts are bound to it), the password is adopted
+     * and the migration completes immediately; otherwise the player is asked to set
+     * a new password to finish the migration. The pending email stays in the cache
+     * until the password is set.
      *
      * @param player the player to migrate
      * @param playerName the lowercased player name
@@ -123,20 +149,23 @@ public class EmailConfirmCommand extends PlayerCommand {
             return;
         }
 
-        PlayerAuth auth = accountMigrationService.completeEmailMigration(player, pending.getNewEmail());
+        PlayerAuth auth = accountMigrationService.handleMigrationEmailConfirmed(player, pending.getNewEmail());
         if (auth != null) {
+            // The email already had a password: the migration is complete
             pendingEmailChangeCache.remove(playerName);
             // 通知其他插件：邮箱绑定确认完成（数据整合插件据此向网站后端同步）
             Bukkit.getPluginManager().callEvent(new EmailConfirmedEvent(player, pending.getNewEmail()));
             asynchronousLogin.performLogin(player, auth);
-        } else {
-            commonService.send(player, MessageKey.ERROR);
         }
+        // Otherwise the player must still set a new password; the pending email is
+        // kept in the cache and the guidance message has already been sent
     }
 
     /**
-     * Handles the verification code of the two-phase v2 registration. Upon success the
-     * email address is marked as confirmed and the player may set a password.
+     * Handles the verification code of the two-phase v2 registration. If the confirmed
+     * email address is already bound to other accounts, its password is adopted: the
+     * account is registered with it right away and the player is logged in. Otherwise
+     * the email address is marked as confirmed and the player may set a password.
      *
      * @param player the player registering
      * @param playerName the lowercased player name
@@ -150,6 +179,16 @@ public class EmailConfirmCommand extends PlayerCommand {
         }
         if (!pending.getCode().equals(code)) {
             commonService.send(player, MessageKey.EMAIL_CONFIRM_WRONG_CODE);
+            return;
+        }
+
+        // The password follows the email: if the email is already in use and has a
+        // password, the new account adopts it instead of asking for a new one
+        HashedPassword emailPassword = emailPasswordService.findPasswordByEmail(pending.getEmail());
+        if (emailPassword != null) {
+            pendingRegistrationCache.remove(playerName);
+            management.performRegister(RegistrationMethod.EMAIL_ADOPT_REGISTRATION,
+                EmailAdoptRegisterParams.of(player, pending.getEmail(), emailPassword));
             return;
         }
 

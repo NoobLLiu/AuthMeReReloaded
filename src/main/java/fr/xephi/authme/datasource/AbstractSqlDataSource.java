@@ -108,6 +108,16 @@ public abstract class AbstractSqlDataSource implements DataSource {
     }
 
     @Override
+    public List<String> getAllAuthsByEmail(String email) {
+        try {
+            return columnsHandler.retrieve(eqIgnoreCase(AuthMeColumns.EMAIL, email), AuthMeColumns.NAME);
+        } catch (SQLException e) {
+            logSqlException(e);
+            return Collections.emptyList();
+        }
+    }
+
+    @Override
     public boolean updateEmail(PlayerAuth auth) {
         return columnsHandler.update(auth, AuthMeColumns.EMAIL);
     }

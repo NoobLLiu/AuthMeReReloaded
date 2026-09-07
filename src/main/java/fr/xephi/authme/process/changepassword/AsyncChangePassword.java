@@ -10,6 +10,7 @@ import fr.xephi.authme.process.AsynchronousProcess;
 import fr.xephi.authme.security.PasswordSecurity;
 import fr.xephi.authme.security.crypts.HashedPassword;
 import fr.xephi.authme.service.CommonService;
+import fr.xephi.authme.service.EmailPasswordService;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
@@ -17,7 +18,7 @@ import javax.inject.Inject;
 import java.util.Locale;
 
 public class AsyncChangePassword implements AsynchronousProcess {
-    
+
     private final ConsoleLogger logger = ConsoleLoggerFactory.get(AsyncChangePassword.class);
 
     @Inject
@@ -32,11 +33,15 @@ public class AsyncChangePassword implements AsynchronousProcess {
     @Inject
     private PlayerCache playerCache;
 
+    @Inject
+    private EmailPasswordService emailPasswordService;
+
     AsyncChangePassword() {
     }
 
     /**
-     * Change password for an online player
+     * Change password for an online player. Since v2 the password follows the email
+     * address: the new password is propagated to all accounts bound to the same email.
      *
      * @param player the player
      * @param oldPassword the old password used by the player
@@ -58,6 +63,8 @@ public class AsyncChangePassword implements AsynchronousProcess {
 
             playerCache.updatePlayer(auth);
             commonService.send(player, MessageKey.PASSWORD_CHANGED_SUCCESS);
+            // The password follows the email: propagate it to the other accounts bound to it
+            emailPasswordService.syncPasswordToEmail(auth.getEmail(), hashedPassword, name);
             logger.info(player.getName() + " changed his password");
         } else {
             commonService.send(player, MessageKey.WRONG_PASSWORD);
@@ -65,7 +72,9 @@ public class AsyncChangePassword implements AsynchronousProcess {
     }
 
     /**
-     * Change a user's password as an administrator, without asking for the previous one
+     * Change a user's password as an administrator, without asking for the previous one.
+     * Since v2 the password follows the email address: the new password is propagated
+     * to all accounts bound to the same email.
      *
      * @param sender who is performing the operation, null if called by other plugins
      * @param playerName the player name
@@ -85,6 +94,15 @@ public class AsyncChangePassword implements AsynchronousProcess {
         HashedPassword hashedPassword = passwordSecurity.computeHash(newPassword, lowerCaseName);
         if (dataSource.updatePassword(lowerCaseName, hashedPassword)) {
             // TODO: send an update when a messaging service will be implemented (PASSWORD_CHANGED)
+
+            // The password follows the email: propagate it to the other accounts bound to it
+            PlayerAuth auth = playerCache.getAuth(lowerCaseName);
+            if (auth == null) {
+                auth = dataSource.getAuth(lowerCaseName);
+            }
+            if (auth != null) {
+                emailPasswordService.syncPasswordToEmail(auth.getEmail(), hashedPassword, lowerCaseName);
+            }
 
             if (sender != null) {
                 commonService.send(sender, MessageKey.PASSWORD_CHANGED_SUCCESS);
