@@ -128,12 +128,28 @@ public interface DataSource extends Reloadable {
     int countAuthsByEmail(String email);
 
     /**
+     * Return all usernames associated with the given email address.
+     *
+     * @param email The email address to look up
+     * @return Usernames associated with the given email address
+     */
+    List<String> getAllAuthsByEmail(String email);
+
+    /**
      * Update the email of the PlayerAuth in the data source.
      *
      * @param auth The PlayerAuth whose email should be updated
      * @return True upon success, false upon failure
      */
     boolean updateEmail(PlayerAuth auth);
+
+    /**
+     * Updates the account schema version of the given auth in the data source.
+     *
+     * @param auth The PlayerAuth whose schema version should be updated
+     * @return True upon success, false upon failure
+     */
+    boolean updateSchemaVersion(PlayerAuth auth);
 
     /**
      * Close the underlying connections to the data source.

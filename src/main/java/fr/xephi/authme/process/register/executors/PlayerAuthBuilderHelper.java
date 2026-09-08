@@ -2,6 +2,7 @@ package fr.xephi.authme.process.register.executors;
 
 import fr.xephi.authme.data.auth.PlayerAuth;
 import fr.xephi.authme.security.crypts.HashedPassword;
+import fr.xephi.authme.service.AccountMigrationService;
 import fr.xephi.authme.util.PlayerUtils;
 import org.bukkit.entity.Player;
 
@@ -32,6 +33,7 @@ final class PlayerAuthBuilderHelper {
             .registrationIp(PlayerUtils.getPlayerIp(player))
             .registrationDate(System.currentTimeMillis())
             .uuid(player.getUniqueId())
+            .schemaVersion(AccountMigrationService.TARGET_SCHEMA_VERSION)
             .build();
     }
 }

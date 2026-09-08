@@ -26,6 +26,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 
+import static fr.xephi.authme.datasource.SqlDataSourceUtils.getNullableInt;
 import static fr.xephi.authme.datasource.SqlDataSourceUtils.getNullableLong;
 import static fr.xephi.authme.datasource.SqlDataSourceUtils.logSqlException;
 
@@ -249,6 +250,11 @@ public class PostgreSqlDataSource extends AbstractSqlDataSource {
                     + " ALTER COLUMN " + col.TOTP_KEY + " TYPE VARCHAR(32);");
             }
 
+            if (isColumnMissing(md, col.SCHEMA_VERSION)) {
+                st.executeUpdate("ALTER TABLE " + tableName
+                    + " ADD COLUMN " + col.SCHEMA_VERSION + " INT;");
+            }
+
             if (!col.PLAYER_UUID.isEmpty() && isColumnMissing(md, col.PLAYER_UUID)) {
                 st.executeUpdate("ALTER TABLE " + tableName
                     + " ADD COLUMN " + col.PLAYER_UUID + " VARCHAR(36)");
@@ -467,6 +473,7 @@ public class PostgreSqlDataSource extends AbstractSqlDataSource {
             .locZ(row.getDouble(col.LASTLOC_Z))
             .locYaw(row.getFloat(col.LASTLOC_YAW))
             .locPitch(row.getFloat(col.LASTLOC_PITCH))
+            .schemaVersion(getNullableInt(row, col.SCHEMA_VERSION))
             .build();
     }
 }

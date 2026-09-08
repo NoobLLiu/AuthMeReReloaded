@@ -3,14 +3,17 @@ package fr.xephi.authme.process.email;
 import fr.xephi.authme.ConsoleLogger;
 import fr.xephi.authme.data.auth.PlayerAuth;
 import fr.xephi.authme.data.auth.PlayerCache;
+import fr.xephi.authme.data.limbo.LimboService;
 import fr.xephi.authme.datasource.DataSource;
 import fr.xephi.authme.events.EmailChangedEvent;
 import fr.xephi.authme.mail.EmailService;
 import fr.xephi.authme.message.MessageKey;
 import fr.xephi.authme.output.ConsoleLoggerFactory;
 import fr.xephi.authme.process.AsynchronousProcess;
+import fr.xephi.authme.service.AccountMigrationService;
 import fr.xephi.authme.service.BukkitService;
 import fr.xephi.authme.service.CommonService;
+import fr.xephi.authme.service.EmailPasswordService;
 import fr.xephi.authme.service.PendingEmailChangeCache;
 import fr.xephi.authme.service.ValidationService;
 import fr.xephi.authme.util.RandomStringUtils;
@@ -55,6 +58,15 @@ public class AsyncAddEmail implements AsynchronousProcess {
     @Inject
     private PendingEmailChangeCache pendingEmailChangeCache;
 
+    @Inject
+    private AccountMigrationService accountMigrationService;
+
+    @Inject
+    private EmailPasswordService emailPasswordService;
+
+    @Inject
+    private LimboService limboService;
+
     AsyncAddEmail() {
     }
 
@@ -73,30 +85,57 @@ public class AsyncAddEmail implements AsynchronousProcess {
 
             if (!Utils.isEmailEmpty(currentEmail)) {
                 service.send(player, MessageKey.USAGE_CHANGE_EMAIL);
-            } else if (!validationService.validateEmail(email)) {
-                service.send(player, MessageKey.INVALID_EMAIL);
-            } else if (!validationService.isEmailFreeForRegistration(email, player)) {
-                service.send(player, MessageKey.EMAIL_ALREADY_USED_ERROR);
-            } else if (!emailService.hasAllInformation()) {
-                service.send(player, MessageKey.INCOMPLETE_EMAIL_SETTINGS);
             } else {
-                EmailChangedEvent event = bukkitService.createAndCallEvent(isAsync
-                    -> new EmailChangedEvent(player, null, email, isAsync));
-                if (event.isCancelled()) {
-                    logger.info("Could not add email to player '" + player + "' – event was cancelled");
-                    service.send(player, MessageKey.EMAIL_ADD_NOT_ALLOWED);
-                    return;
-                }
-                // Phase 1: generate code, send verification email, cache pending change
-                String code = RandomStringUtils.generateNum(6);
-                SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy'-'MM'-'dd'-' HH:mm:ss");
-                String time = dateFormat.format(new Date(System.currentTimeMillis()));
-                pendingEmailChangeCache.put(playerName, email, code);
-                emailService.sendVerificationMail(player.getName(), email, code, time);
-                service.send(player, MessageKey.EMAIL_VERIFICATION_SENT);
+                dispatchVerificationCode(player, playerName, email);
             }
+        } else if (accountMigrationService.isAwaitingEmailBinding(player)) {
+            // v1 account pending migration: the player is unauthenticated on purpose
+            // and must bind an email address before being allowed to play
+            dispatchVerificationCode(player, playerName, email);
+            limboService.resetTimeoutTask(player);
         } else {
             sendUnloggedMessage(player);
+        }
+    }
+
+    /**
+     * Validates the given email and sends a verification code to it. The email
+     * is only persisted once the player confirms the code with
+     * {@code /email confirm <code>}. The same email may be bound by multiple
+     * accounts (v2 rule), so an email already in use is admitted; the password
+     * then follows the email (it is adopted on confirmation).
+     *
+     * @param player the player to add the email to
+     * @param playerName the lowercased player name
+     * @param email the email to add
+     */
+    private void dispatchVerificationCode(Player player, String playerName, String email) {
+        if (!validationService.validateEmail(email)) {
+            service.send(player, MessageKey.INVALID_EMAIL);
+        } else if (!emailService.hasAllInformation()) {
+            service.send(player, MessageKey.INCOMPLETE_EMAIL_SETTINGS);
+        } else {
+            EmailChangedEvent event = bukkitService.createAndCallEvent(isAsync
+                -> new EmailChangedEvent(player, null, email, isAsync));
+            if (event.isCancelled()) {
+                logger.info("Could not add email to player '" + player + "' – event was cancelled");
+                service.send(player, MessageKey.EMAIL_ADD_NOT_ALLOWED);
+                return;
+            }
+            // The password follows the email: if the email is already bound to other
+            // accounts and has a password, it will be adopted and no new one is needed
+            boolean passwordReused = emailPasswordService.findPasswordByEmail(email) != null;
+
+            // Phase 1: generate code, send verification email, cache pending change
+            String code = RandomStringUtils.generateNum(6);
+            SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy'-'MM'-'dd'-' HH:mm:ss");
+            String time = dateFormat.format(new Date(System.currentTimeMillis()));
+            pendingEmailChangeCache.put(playerName, email, code);
+            emailService.sendVerificationMail(player.getName(), email, code, time);
+            service.send(player, MessageKey.EMAIL_VERIFICATION_SENT);
+            if (passwordReused) {
+                service.send(player, MessageKey.REGISTER_EMAIL_IN_USE_HINT);
+            }
         }
     }
 

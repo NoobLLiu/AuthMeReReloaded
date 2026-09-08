@@ -115,9 +115,11 @@ public class CommandInitializer {
             .parent(null)
             .labels("register", "reg")
             .description("Register an account")
-            .detailedDescription("Command to register using AuthMeReloaded.")
-            .withArgument("password", "Password", OPTIONAL)
-            .withArgument("verifyPassword", "Verify password", OPTIONAL)
+            .detailedDescription("Two-step registration: enter /register <email>, confirm the code sent to you "
+                + "with /email confirm <code>, then set your password with /register <password> <password>. "
+                + "If the email is already bound to another account, its password is reused automatically.")
+            .withArgument("emailOrPassword", "Email address (first step), or new password (after confirmation)", OPTIONAL)
+            .withArgument("password", "Password confirmation (after email confirmation)", OPTIONAL)
             .permission(PlayerPermission.REGISTER)
             .executableCommand(RegisterCommand.class)
             .register();
@@ -517,7 +519,6 @@ public class CommandInitializer {
             .description("Add Email")
             .detailedDescription("Add a new email address to your account.")
             .withArgument("email", "Email address", MANDATORY)
-            .withArgument("verifyEmail", "Email address verification", MANDATORY)
             .permission(PlayerPermission.ADD_EMAIL)
             .executableCommand(AddEmailCommand.class)
             .register();

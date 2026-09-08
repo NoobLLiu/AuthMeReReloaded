@@ -7,8 +7,13 @@
 registration:
     disabled: '&cRekisteröinti on suljettu!'
     name_taken: '&cPelaaja on jo rekisteröity'
-    register_request: '&cRekisteröidy palvelimellemme komennolla "/register <salasana> <salasana>"'
-    command_usage: '&cKäyttötapa: /register <salasana> <salasana>'
+    register_request: '&cRekisteröidy komennolla "/register <sähköposti>", vahvista koodi komennolla "/email confirm <koodi>" ja aseta sitten salasana komennolla "/register <salasana> <salasana>"'
+    command_usage: '&cKäyttötapa: /register <sähköposti>, sitten /email confirm <koodi>, sitten /register <salasana> <salasana>'
+    command_usage_email: '&cKäyttötapa: /register <sähköposti>'
+    command_usage_password: '&cKäyttötapa: /register <salasana> <salasana>'
+    email_confirmed: '&aSähköposti vahvistettu! Aseta salasanasi komennolla /register <salasana> <salasana>'
+    password_reused: '&aTällä sähköpostilla on jo salasana: tilisi rekisteröitiin sillä ja sinut kirjattiin sisään automaattisesti.'
+    email_in_use_hint: '&eHuomaa: tämä sähköposti on jo sidottu olemassa oleviin tileihin. Vahvistuskoodin jälkeen sen salasana otetaan käyttöön – uutta salasanaa ei tarvita.'
     reg_only: '&fMene sivustolle: https://example.com rekisteröityäksesi!'
     success: '&cRekisteröidyit onnistuneesti!'
     kicked_admin_registered: 'Ylläpitäjä rekisteröi sinut juuri; kirjaudu sisään uudelleen.'
@@ -85,8 +90,8 @@ on_join_validation:
 
 # Email
 email:
-    add_email_request: '&cLisää sähköpostisi: /email add sähköpostisi sähköpostisiUudelleen'
-    usage_email_add: '&fKäyttötapa: /email add <email> <confirmEmail> '
+    add_email_request: '&cLisää sähköpostisi: /email add sähköpostisi'
+    usage_email_add: '&fKäyttötapa: /email add <email> '
     usage_email_change: '&fKäyttötapa: /email change <oldEmail> <newEmail> '
     new_email_invalid: '[AuthMe] Uusi sähköposti on väärä!'
     old_email_invalid: '[AuthMe] Vanha sähköposti on väärä!'
@@ -103,6 +108,16 @@ email:
     send_failure: 'Sähköpostia ei voitu lähettää. Ota yhteyttä järjestelmänvalvojaan.'
     change_password_expired: 'Et voi enää vaihtaa salasanaa tällä komennolla.'
     email_cooldown_error: '&cSähköpostia on jo lähetetty äskettäin. Sinun on odotettava %time ennen kuin voit lähettää uuden.'
+    verification_sent: '&fVahvistuskoodi on lähetetty uuteen sähköpostiisi. Käytä &a/email confirm <koodi> &fviimeistelläksesi (voimassa 10 minuuttia).'
+    confirm_success: '&aSähköposti vahvistettu ja sidottu tiliisi onnistuneesti!'
+    confirm_wrong_code: '&cVäärä vahvistuskoodi!'
+    no_pending_change: '&cEi odottavia sähköpostimuutoksia. Käytä ensin /email add tai /email change.'
+    usage_email_confirm: '&fKäyttötapa: /email confirm <koodi>'
+    migration_required: '&fTilisi on sidottava sähköpostiosoitteeseen ennen kuin voit jatkaa pelaamista. Käytä &a/email add <sähköposti> &fsitä varten; vahvistuskoodi lähetetään osoitteeseen.'
+    migration_complete: '&aSähköposti sidottu onnistuneesti! Tilisi on päivitetty ja sinut on kirjattu sisään. Hauskaa peliaikaa!'
+    migration_password_required: '&fSähköpostisi on vahvistettu. Viimeistele siirto asettamalla uusi salasana komennolla &a/register <salasana> <salasana>'
+    password_adopted: '&aTällä sähköpostilla on jo salasana; sitä sovellettiin tiliisi. Kaikki samaa sähköpostia käyttävät tilit käyttävät samaa salasanaa.'
+    password_synced: '&eSähköpostiisi sidottujen tilien salasanaa on muutettu.'
 
 # Password recovery by email
 recovery:

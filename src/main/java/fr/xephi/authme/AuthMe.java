@@ -216,8 +216,12 @@ public class AuthMe extends JavaPlugin {
         //detect server brand with classloader
         checkServerType();
         try {
-            Objects.requireNonNull(getCommand("register")).setTabCompleter(new TabCompleteHandler());
-            Objects.requireNonNull(getCommand("login")).setTabCompleter(new TabCompleteHandler());
+            TabCompleteHandler tabCompleteHandler = injector.getSingleton(TabCompleteHandler.class);
+            String[] commandNames = {"authme", "email", "login", "logout", "register",
+                "unregister", "changepassword", "totp", "captcha", "verification"};
+            for (String commandName : commandNames) {
+                Objects.requireNonNull(getCommand(commandName)).setTabCompleter(tabCompleteHandler);
+            }
         } catch (NullPointerException ignored) {
         }
         logger.info("AuthMeReReloaded is enabled successfully!");

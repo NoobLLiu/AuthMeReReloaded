@@ -204,6 +204,15 @@ public class CacheDataSource implements DataSource {
     }
 
     @Override
+    public boolean updateSchemaVersion(final PlayerAuth auth) {
+        boolean result = source.updateSchemaVersion(auth);
+        if (result) {
+            cachedAuths.refresh(auth.getNickname());
+        }
+        return result;
+    }
+
+    @Override
     public List<String> getAllAuthsByIp(String ip) {
         return source.getAllAuthsByIp(ip);
     }
@@ -211,6 +220,11 @@ public class CacheDataSource implements DataSource {
     @Override
     public int countAuthsByEmail(String email) {
         return source.countAuthsByEmail(email);
+    }
+
+    @Override
+    public List<String> getAllAuthsByEmail(String email) {
+        return source.getAllAuthsByEmail(email);
     }
 
     @Override

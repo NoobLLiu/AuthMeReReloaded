@@ -156,6 +156,16 @@ public class LimboService {
     }
 
     /**
+     * Resets the timeout task associated with the player's LimboPlayer.
+     *
+     * @param player the player to set a new timeout task for
+     */
+    public void resetTimeoutTask(Player player) {
+        getLimboOrLogError(player, "reset timeout task")
+            .ifPresent(limbo -> taskManager.registerTimeoutTask(player, limbo));
+    }
+
+    /**
      * @param player the player whose message task should be muted
      */
     public void muteMessageTask(Player player) {

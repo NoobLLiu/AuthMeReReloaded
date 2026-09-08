@@ -44,6 +44,8 @@ public class PlayerAuth {
     private float yaw;
     private float pitch;
     private UUID uuid;
+    /** Account schema version; null means the account predates schema versioning (v1). */
+    private Integer schemaVersion;
 
     /**
      * Hidden constructor.
@@ -181,6 +183,14 @@ public class PlayerAuth {
         this.uuid = uuid;
     }
 
+    public Integer getSchemaVersion() {
+        return schemaVersion;
+    }
+
+    public void setSchemaVersion(Integer schemaVersion) {
+        this.schemaVersion = schemaVersion;
+    }
+
     @Override
     public boolean equals(Object obj) {
         if (!(obj instanceof PlayerAuth)) {
@@ -232,6 +242,7 @@ public class PlayerAuth {
         private float yaw;
         private float pitch;
         private UUID uuid;
+        private Integer schemaVersion;
 
         /**
          * Creates a PlayerAuth object.
@@ -258,6 +269,7 @@ public class PlayerAuth {
             auth.yaw = yaw;
             auth.pitch = pitch;
             auth.uuid = uuid;
+            auth.schemaVersion = schemaVersion;
             return auth;
         }
 
@@ -367,6 +379,11 @@ public class PlayerAuth {
 
         public Builder uuid(UUID uuid) {
             this.uuid = uuid;
+            return this;
+        }
+
+        public Builder schemaVersion(Integer schemaVersion) {
+            this.schemaVersion = schemaVersion;
             return this;
         }
     }

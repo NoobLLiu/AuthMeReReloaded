@@ -7,8 +7,13 @@
 registration:
     disabled: '&c遊戲內註冊已停用!'
     name_taken: '&c您已經註冊此用戶名!'
-    register_request: '&3[請先注冊] 請按T , 然後輸入 "/register [你的密碼] [重覆確認你的密碼]" 來注冊。'
-    command_usage: '&c使用方法: 輸入"/register [你的密碼] [重覆確認你的密碼]"'
+    register_request: '&3[請先注冊] 請按T , 然後輸入 "/register [你的電郵]" ，查收驗證碼後輸入 "/email confirm [驗證碼]" 完成驗證，再輸入 "/register [你的密碼] [重覆確認你的密碼]" 設置密碼。'
+    command_usage: '&c使用方法: 輸入"/register [你的電郵]"，驗證電郵後再輸入"/register [你的密碼] [重覆確認你的密碼]"設置密碼'
+    command_usage_email: '&c使用方法: 輸入"/register [你的電郵]"'
+    command_usage_password: '&c使用方法: 輸入"/register [你的密碼] [重覆確認你的密碼]"'
+    email_confirmed: '&a電郵驗證成功！請輸入"/register [你的密碼] [重覆確認你的密碼]"設置密碼，完成註冊'
+    password_reused: '&a該電郵已設置過密碼，您的賬號已直接使用該密碼完成註冊並自動登入。下次登入請使用該電郵的密碼。'
+    email_in_use_hint: '&e提示：該電郵已綁定其他賬號。驗證成功後將直接沿用該電郵已有的密碼，無需再設置新密碼。'
     reg_only: '&4只有註冊用戶才能加入服務器！ 請訪問https://example.com註冊！'
     success: '&2已成功註冊!'
     kicked_admin_registered: '管理員剛剛註冊了您; 請重新登錄。'
@@ -85,8 +90,8 @@ on_join_validation:
 
 # Email
 email:
-    add_email_request: '&3請使用命令: /email add [你的電郵地址] [重覆確認你的電郵地址] 將您的電子郵件添加到您的帳戶"'
-    usage_email_add: '&c使用方法: "/email add [電郵地址] [confirmEmail]"'
+    add_email_request: '&3請使用命令: /email add [你的電郵地址] 將您的電子郵件添加到您的帳戶，驗證碼將發送至該郵箱'
+    usage_email_add: '&c使用方法: "/email add [電郵地址]"'
     usage_email_change: '&c使用方法: "/email change [舊電郵地址] [新電郵地址]"'
     new_email_invalid: '&c新電子郵件地址無效，請重試!'
     old_email_invalid: '&c舊電子郵件地址無效，請重試!'
@@ -103,6 +108,16 @@ email:
     send_failure: '&c郵件已被作廢,請檢查您的郵箱是否正常工作.'
     change_password_expired: '&c您不能使用此命令更改密碼'
     email_cooldown_error: '&c您需要等待 %time 後才能再次請求發送'
+    verification_sent: '&f驗證碼已發送到新電郵，請輸入 &a/email confirm <驗證碼> &f完成綁定（10分鐘內有效）'
+    confirm_success: '&f電郵驗證成功，已綁定到您的賬戶 !'
+    confirm_wrong_code: '&c驗證碼錯誤 !'
+    no_pending_change: '&c沒有待確認的電郵變更，請先使用 /email add 或 /email change'
+    usage_email_confirm: '&f用法: /email confirm <驗證碼>'
+    migration_required: '&f您的賬號需要綁定電郵後才能繼續遊玩。請輸入 &a/email add <電郵> &f進行綁定，驗證碼將發送至該郵箱'
+    migration_complete: '&a電郵綁定成功！賬號已升級完成，您已自動登入，祝您遊戲愉快！'
+    migration_password_required: '&f電郵驗證成功！請輸入 &a/register <新密碼> <重覆確認新密碼> &f設置新密碼，完成賬號升級'
+    password_adopted: '&a該電郵已設置過密碼，已直接應用到您的賬號。同一電郵下的所有賬號使用相同密碼。'
+    password_synced: '&e您的電郵下所有賬號的密碼已被統一修改（密碼跟隨電郵）。'
 
 # Password recovery by email
 recovery:

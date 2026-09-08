@@ -23,6 +23,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 
+import static fr.xephi.authme.datasource.SqlDataSourceUtils.getNullableInt;
 import static fr.xephi.authme.datasource.SqlDataSourceUtils.getNullableLong;
 import static fr.xephi.authme.datasource.SqlDataSourceUtils.logSqlException;
 
@@ -183,6 +184,11 @@ public class H2 extends AbstractSqlDataSource {
             if (isColumnMissing(md, col.TOTP_KEY)) {
                 st.executeUpdate("ALTER TABLE " + tableName
                     + " ADD COLUMN IF NOT EXISTS " + col.TOTP_KEY + " VARCHAR(32);");
+            }
+
+            if (isColumnMissing(md, col.SCHEMA_VERSION)) {
+                st.executeUpdate("ALTER TABLE " + tableName
+                    + " ADD COLUMN IF NOT EXISTS " + col.SCHEMA_VERSION + " INT;");
             }
 
             if (!col.PLAYER_UUID.isEmpty() && isColumnMissing(md, col.PLAYER_UUID)) {
@@ -382,6 +388,7 @@ public class H2 extends AbstractSqlDataSource {
             .locWorld(row.getString(col.LASTLOC_WORLD))
             .locYaw(row.getFloat(col.LASTLOC_YAW))
             .locPitch(row.getFloat(col.LASTLOC_PITCH))
+            .schemaVersion(getNullableInt(row, col.SCHEMA_VERSION))
             .build();
     }
 

@@ -7,8 +7,13 @@
 registration:
   disabled: '&cIn-game registration is disabled!'
   name_taken: '&cYou already have registered this username!'
-  register_request: '&3Please, register to the server with the command: /register <password> <ConfirmPassword>'
-  command_usage: '&cUsage: /register <password> <ConfirmPassword>'
+  register_request: '&3Please, register to the server with the command: /register <email>, confirm the code with /email confirm <code>, then set a password with /register <password> <ConfirmPassword>'
+  command_usage: '&cUsage: /register <email>, then /email confirm <code>, then /register <password> <ConfirmPassword>'
+  command_usage_email: '&cUsage: /register <email>'
+  command_usage_password: '&cUsage: /register <password> <ConfirmPassword>'
+  email_confirmed: '&2Email address confirmed! Now set your password with /register <password> <ConfirmPassword>'
+  password_reused: '&2This email address already has a password: your account has been registered with it and you have been logged in automatically. Use the email''s password to log in next time.'
+  email_in_use_hint: '&eNote: this email address is already bound to existing accounts. Once you confirm the verification code, its password will be reused — you will not need to set a new one.'
   reg_only: '&4Only registered users can join the server! Please visit https://example.com to register yourself!'
   success: '&2Successfully registered!'
   kicked_admin_registered: 'An admin just registered you; please log in again.'
@@ -85,8 +90,8 @@ on_join_validation:
 
 # Email
 email:
-  add_email_request: '&3Please add your email to your account with the command: /email add <yourEmail> <confirmEmail>'
-  usage_email_add: '&cUsage: /email add <email> <confirmEmail>'
+  add_email_request: '&3Please add your email to your account with the command: /email add <yourEmail>'
+  usage_email_add: '&cUsage: /email add <email>'
   usage_email_change: '&cUsage: /email change <oldEmail> <newEmail>'
   new_email_invalid: '&cInvalid new email, try again!'
   old_email_invalid: '&cInvalid old email, try again!'
@@ -100,6 +105,11 @@ email:
   confirm_success: '&aEmail confirmed and bound to your account successfully!'
   confirm_wrong_code: '&cIncorrect verification code!'
   no_pending_change: '&cNo pending email change. Use /email add or /email change first.'
+  migration_required: '&fYour account must bind an email address before you can continue playing. Use &a/email add <email> &fto bind one; a verification code will be sent to that address.'
+  migration_complete: '&2Email bound successfully! Your account has been migrated and you are now logged in. Have fun!'
+  migration_password_required: '&fYour email has been confirmed. To finish the migration, please set a new password with &a/register <password> <ConfirmPassword>'
+  password_adopted: '&2This email address already has a password; it has been applied to your account. All accounts sharing this email use the same password.'
+  password_synced: '&eThe password of the accounts bound to your email address has been changed.'
   usage_email_confirm: '&fUsage: /email confirm <code>'
   email_show: '&2Your current email address is: &f%email'
   no_email_for_account: '&2You currently don''t have email address associated with this account.'

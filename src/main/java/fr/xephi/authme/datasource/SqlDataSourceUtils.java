@@ -41,6 +41,20 @@ public final class SqlDataSourceUtils {
     }
 
     /**
+     * Returns the int value of a column, or null when appropriate. This method is necessary because
+     * JDBC's {@link ResultSet#getInt} returns {@code 0} if the entry in the database is {@code null}.
+     *
+     * @param rs the result set to read from
+     * @param columnName the name of the column to retrieve
+     * @return the value (which may be null)
+     * @throws SQLException :)
+     */
+    public static Integer getNullableInt(ResultSet rs, String columnName) throws SQLException {
+        int intValue = rs.getInt(columnName);
+        return rs.wasNull() ? null : intValue;
+    }
+
+    /**
      * Returns whether the given column has a NOT NULL constraint.
      *
      * @param metaData the database meta data

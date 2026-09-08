@@ -28,6 +28,7 @@ import java.util.Locale;
 import java.util.Set;
 import java.util.UUID;
 
+import static fr.xephi.authme.datasource.SqlDataSourceUtils.getNullableInt;
 import static fr.xephi.authme.datasource.SqlDataSourceUtils.getNullableLong;
 import static fr.xephi.authme.datasource.SqlDataSourceUtils.logSqlException;
 
@@ -300,6 +301,11 @@ public class MySQL extends AbstractSqlDataSource {
                     + " MODIFY " + col.TOTP_KEY + " VARCHAR(32);");
             }
 
+            if (isColumnMissing(md, col.SCHEMA_VERSION)) {
+                st.executeUpdate("ALTER TABLE " + tableName
+                    + " ADD COLUMN " + col.SCHEMA_VERSION + " INT;");
+            }
+
             if (!col.PLAYER_UUID.isEmpty() && isColumnMissing(md, col.PLAYER_UUID)) {
                 st.executeUpdate("ALTER TABLE " + tableName
                     + " ADD COLUMN " + col.PLAYER_UUID + " VARCHAR(36)");
@@ -519,6 +525,7 @@ public class MySQL extends AbstractSqlDataSource {
             .locYaw(row.getFloat(col.LASTLOC_YAW))
             .locPitch(row.getFloat(col.LASTLOC_PITCH))
             .uuid(uuid)
+            .schemaVersion(getNullableInt(row, col.SCHEMA_VERSION))
             .build();
     }
 }
