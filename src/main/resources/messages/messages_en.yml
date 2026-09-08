@@ -120,6 +120,8 @@ email:
   unbind_success: '&2The account &f%player &2has been unbound from your email address.'
   unbind_not_bound: '&cThe account %player is not bound to your email address.'
   unbind_own_account: '&cYou cannot unbind your own account. Use /email add or /email change to manage your own email.'
+  unbind_player_online: '&cThe player %player is currently online and cannot be unbound.'
+  unbound_rebind_required: '&eYour account has been unbound from its email address. Please bind a new email address to continue playing.'
   already_used: '&4The email address is already being used'
   incomplete_settings: 'Error: not all required settings are set for sending emails. Please contact an admin.'
   send_failure: 'The email could not be sent. Please contact an administrator.'

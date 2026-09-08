@@ -37,6 +37,14 @@ public class AccountMigrationService {
     /** The account schema version written by this plugin version. */
     public static final int TARGET_SCHEMA_VERSION = 2;
 
+    /**
+     * Schema version of accounts that have been unbound from an email address. They are
+     * treated like v1 accounts: on their next login they are intercepted and must bind a
+     * new email address again. The value distinguishes them from legacy v1 accounts
+     * (which have no schema version) so that a dedicated notice can be shown.
+     */
+    public static final int UNBOUND_SCHEMA_VERSION = 1;
+
     @Inject
     private DataSource dataSource;
 
@@ -131,8 +139,14 @@ public class AccountMigrationService {
             limboService.resetTimeoutTask(player);
         }
         service.send(player, MessageKey.LOGIN_SUCCESS);
-        service.send(player, passwordPending
-            ? MessageKey.EMAIL_MIGRATION_PASSWORD_REQUIRED : MessageKey.EMAIL_MIGRATION_REQUIRED);
+        if (passwordPending) {
+            service.send(player, MessageKey.EMAIL_MIGRATION_PASSWORD_REQUIRED);
+        } else if (auth.getSchemaVersion() != null && auth.getSchemaVersion() == UNBOUND_SCHEMA_VERSION) {
+            // The account was unbound from an email address: give a dedicated notice
+            service.send(player, MessageKey.EMAIL_UNBOUND_REBIND_REQUIRED);
+        } else {
+            service.send(player, MessageKey.EMAIL_MIGRATION_REQUIRED);
+        }
     }
 
     /**

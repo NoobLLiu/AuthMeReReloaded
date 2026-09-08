@@ -128,6 +128,8 @@ email:
     unbind_success: '&a账号 &f%player &a已从您的邮箱解绑'
     unbind_not_bound: '&c账号 %player 未绑定到您的邮箱'
     unbind_own_account: '&c您不能解绑自己的账号，请使用 /email add 或 /email change 管理您自己的邮箱'
+    unbind_player_online: '&c玩家 %player 当前在线，无法解绑其账号'
+    unbound_rebind_required: '&e您的账号已解除邮箱绑定，请在登录后重新绑定邮箱后继续游玩'
     already_used: '&c邮箱已被使用'
     incomplete_settings: '&c错误: 必要设置未设定完成,请联系管理员'
     send_failure: '&c邮件已被作废,请检查您的邮箱是否正常工作.'

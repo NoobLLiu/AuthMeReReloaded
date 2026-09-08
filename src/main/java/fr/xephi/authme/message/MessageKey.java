@@ -287,6 +287,12 @@ public enum MessageKey {
     /** You cannot unbind your own account. */
     EMAIL_UNBIND_OWN_ACCOUNT("email.unbind_own_account"),
 
+    /** The player %player is currently online and cannot be unbound. */
+    EMAIL_UNBIND_PLAYER_ONLINE("email.unbind_player_online", "%player"),
+
+    /** The account has been unbound from its email address and must bind a new one on login. */
+    EMAIL_UNBOUND_REBIND_REQUIRED("email.unbound_rebind_required"),
+
     /** Recovery email sent successfully! Please check your email inbox! */
     RECOVERY_EMAIL_SENT_MESSAGE("recovery.email_sent"),
 
