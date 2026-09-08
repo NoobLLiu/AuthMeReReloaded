@@ -266,6 +266,27 @@ public enum MessageKey {
     /** You currently don't have email address associated with this account. */
     SHOW_NO_EMAIL("email.no_email_for_account"),
 
+    /** Usage: /email accounts */
+    USAGE_EMAIL_ACCOUNTS("email.usage_email_accounts"),
+
+    /** Accounts bound to your email address (%count): %accounts */
+    EMAIL_ACCOUNTS_LIST("email.accounts_list", "%count", "%accounts"),
+
+    /** Your email address has no accounts bound to it. */
+    EMAIL_ACCOUNTS_NONE("email.accounts_none"),
+
+    /** Usage: /email unbind <player> */
+    USAGE_EMAIL_UNBIND("email.usage_email_unbind"),
+
+    /** The account %player has been unbound from your email address. */
+    EMAIL_UNBIND_SUCCESS("email.unbind_success", "%player"),
+
+    /** The account %player is not bound to your email address. */
+    EMAIL_UNBIND_NOT_BOUND("email.unbind_not_bound", "%player"),
+
+    /** You cannot unbind your own account. */
+    EMAIL_UNBIND_OWN_ACCOUNT("email.unbind_own_account"),
+
     /** Recovery email sent successfully! Please check your email inbox! */
     RECOVERY_EMAIL_SENT_MESSAGE("recovery.email_sent"),
 

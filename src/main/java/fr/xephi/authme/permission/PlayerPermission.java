@@ -46,6 +46,11 @@ public enum PlayerPermission implements PermissionNode {
     CHANGE_EMAIL("authme.player.email.change"),
 
     /**
+     * Command permission to unbind an account from the own email address.
+     */
+    UNBIND_EMAIL("authme.player.email.unbind"),
+
+    /**
      * Command permission to recover an account using its email address.
      */
     RECOVER_EMAIL("authme.player.email.recover"),

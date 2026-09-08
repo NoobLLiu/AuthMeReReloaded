@@ -47,8 +47,8 @@ commands:
     description: AuthMe 管理员命令
     usage: /authme <子命令> ——输入 /authme help 查看全部子命令（注册、注销、改密码、查邮箱、备份、重载等）
   email:
-    description: 邮箱命令（绑定、换绑、验证、找回密码）
-    usage: /email <show|add|change|confirm|recover|code|setpassword> ——输入 /email help 查看说明
+    description: 邮箱命令（绑定、换绑、验证、找回密码、查看邮箱账号、解绑）
+    usage: /email <show|accounts|add|change|confirm|unbind|recover|code|setpassword> ——输入 /email help 查看说明
   login:
     description: 登录命令
     usage: /login <密码>（同一邮箱下的账号使用相同密码）
@@ -274,6 +274,7 @@ permissions:
       authme.player.email.add: true
       authme.player.email.recover: true
       authme.player.email.see: true
+      authme.player.email.unbind: true
       authme.player.login: true
       authme.player.logout: true
       authme.player.protection.quickcommandsprotection: true
@@ -296,11 +297,15 @@ permissions:
       authme.player.email.add: true
       authme.player.email.recover: true
       authme.player.email.see: true
+      authme.player.email.unbind: true
   authme.player.email.add:
     description: Command permission to add an email address.
     default: true
   authme.player.email.change:
     description: Command permission to change the email address.
+    default: op
+  authme.player.email.unbind:
+    description: Command permission to unbind an account from your email address.
     default: op
   authme.player.email.recover:
     description: Command permission to recover an account using its email address.

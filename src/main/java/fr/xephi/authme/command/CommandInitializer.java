@@ -34,12 +34,14 @@ import fr.xephi.authme.command.executable.captcha.CaptchaCommand;
 import fr.xephi.authme.command.executable.changepassword.ChangePasswordCommand;
 import fr.xephi.authme.command.executable.email.AddEmailCommand;
 import fr.xephi.authme.command.executable.email.ChangeEmailCommand;
+import fr.xephi.authme.command.executable.email.EmailAccountsCommand;
 import fr.xephi.authme.command.executable.email.EmailBaseCommand;
 import fr.xephi.authme.command.executable.email.EmailConfirmCommand;
 import fr.xephi.authme.command.executable.email.EmailSetPasswordCommand;
 import fr.xephi.authme.command.executable.email.ProcessCodeCommand;
 import fr.xephi.authme.command.executable.email.RecoverEmailCommand;
 import fr.xephi.authme.command.executable.email.ShowEmailCommand;
+import fr.xephi.authme.command.executable.email.UnbindEmailCommand;
 import fr.xephi.authme.command.executable.login.LoginCommand;
 import fr.xephi.authme.command.executable.logout.LogoutCommand;
 import fr.xephi.authme.command.executable.register.RegisterCommand;
@@ -510,6 +512,27 @@ public class CommandInitializer {
             .detailedDescription("Show your current email address.")
             .permission(PlayerPermission.SEE_EMAIL)
             .executableCommand(ShowEmailCommand.class)
+            .register();
+
+        // Register the accounts command
+        CommandDescription.builder()
+            .parent(emailBase)
+            .labels("accounts", "list")
+            .description("Show accounts bound to your email")
+            .detailedDescription("Show all accounts bound to your current email address.")
+            .permission(PlayerPermission.SEE_EMAIL)
+            .executableCommand(EmailAccountsCommand.class)
+            .register();
+
+        // Register the unbind command
+        CommandDescription.builder()
+            .parent(emailBase)
+            .labels("unbind", "removeaccount")
+            .description("Unbind an account from your email")
+            .detailedDescription("Unbind another account from your email address. The account keeps its password.")
+            .withArgument("player", "Account to unbind", MANDATORY)
+            .permission(PlayerPermission.UNBIND_EMAIL)
+            .executableCommand(UnbindEmailCommand.class)
             .register();
 
         // Register the add command
