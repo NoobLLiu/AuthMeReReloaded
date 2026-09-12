@@ -1,7 +1,7 @@
 package com.authme.geyser;
 
 import org.geysermc.geyser.api.extension.Extension;
-import org.slf4j.Logger;
+import org.geysermc.geyser.api.extension.ExtensionLogger;
 
 import java.nio.file.Path;
 import java.util.concurrent.Executors;
@@ -28,9 +28,11 @@ public class AuthMeGeyserExtension implements Extension {
     private IdentitySwitchListener identitySwitchListener;
     private ScheduledExecutorService cleanupScheduler;
 
-    @Override
+    /**
+     * Called by the Geyser extension loader when the extension is enabled.
+     */
     public void onEnable() {
-        Logger logger = logger();
+        ExtensionLogger logger = logger();
         Path serverRoot = resolveServerRoot();
 
         logger.info("AuthMe Geyser Extension: enabling...");
@@ -40,7 +42,7 @@ public class AuthMeGeyserExtension implements Extension {
 
         // Register the identity switch event listener
         identitySwitchListener = new IdentitySwitchListener(pendingSwitchStore, logger);
-        eventBus().register(this, identitySwitchListener);
+        eventBus().register(identitySwitchListener);
 
         // Schedule periodic cleanup of expired switch files
         cleanupScheduler = Executors.newSingleThreadScheduledExecutor(r -> {
@@ -56,9 +58,11 @@ public class AuthMeGeyserExtension implements Extension {
         logger.info("AuthMe Geyser Extension: enabled. Listening for Bedrock identity switches.");
     }
 
-    @Override
+    /**
+     * Called by the Geyser extension loader when the extension is disabled.
+     */
     public void onDisable() {
-        Logger logger = logger();
+        ExtensionLogger logger = logger();
         logger.info("AuthMe Geyser Extension: disabling...");
 
         if (cleanupScheduler != null) {

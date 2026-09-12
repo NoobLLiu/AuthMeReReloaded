@@ -47,18 +47,10 @@
     </repositories>
 
     <dependencies>
-        <!-- Geyser Extension API -->
+        <!-- Geyser Extension API (core 不需要：内部类通过反射访问) -->
         <dependency>
             <groupId>org.geysermc.geyser</groupId>
             <artifactId>api</artifactId>
-            <version>${geyser.version}</version>
-            <scope>provided</scope>
-        </dependency>
-
-        <!-- Geyser Core (for accessing internal GeyserSession) -->
-        <dependency>
-            <groupId>org.geysermc.geyser</groupId>
-            <artifactId>core</artifactId>
             <version>${geyser.version}</version>
             <scope>provided</scope>
         </dependency>
@@ -68,14 +60,6 @@
             <groupId>org.geysermc.floodgate</groupId>
             <artifactId>api</artifactId>
             <version>${floodgate.version}</version>
-            <scope>provided</scope>
-        </dependency>
-
-        <!-- SLF4J for logging -->
-        <dependency>
-            <groupId>org.slf4j</groupId>
-            <artifactId>slf4j-api</artifactId>
-            <version>2.0.13</version>
             <scope>provided</scope>
         </dependency>
     </dependencies>

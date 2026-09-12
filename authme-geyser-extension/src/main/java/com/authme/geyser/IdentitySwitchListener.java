@@ -1,16 +1,15 @@
 package com.authme.geyser;
 
-import org.geysermc.event.Subscribe;
+import org.geysermc.event.subscribe.Subscribe;
 import org.geysermc.geyser.api.connection.GeyserConnection;
-import org.geysermc.geyser.api.event.connection.GeyserClientInitializeEvent;
-import org.slf4j.Logger;
+import org.geysermc.geyser.api.event.bedrock.SessionLoginEvent;
+import org.geysermc.geyser.api.extension.ExtensionLogger;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
-import java.util.UUID;
 
 /**
- * Listens for Geyser client initialization events and applies pending identity switches
+ * Listens for Geyser session login events and applies pending identity switches
  * for Bedrock players reconnecting after an AuthMe identity switch.
  * <p>
  * When a Bedrock player connects, this listener checks for a pending switch (written by
@@ -20,31 +19,31 @@ import java.util.UUID;
 public class IdentitySwitchListener {
 
     private final PendingSwitchStore store;
-    private final Logger logger;
+    private final ExtensionLogger logger;
 
-    public IdentitySwitchListener(PendingSwitchStore store, Logger logger) {
+    public IdentitySwitchListener(PendingSwitchStore store, ExtensionLogger logger) {
         this.store = store;
         this.logger = logger;
     }
 
     @Subscribe
-    public void onClientInitialize(GeyserClientInitializeEvent event) {
+    public void onSessionLogin(SessionLoginEvent event) {
         try {
-            handleClientInitialize(event);
+            handleSessionLogin(event);
         } catch (Exception e) {
-            logger.error("Error in AuthMe identity switch listener: {}", e.getMessage(), e);
+            logger.error("Error in AuthMe identity switch listener: " + e.getMessage(), e);
         }
     }
 
-    private void handleClientInitialize(GeyserClientInitializeEvent event) {
+    private void handleSessionLogin(SessionLoginEvent event) {
         GeyserConnection connection = event.connection();
         if (connection == null) {
             return;
         }
 
-        // Extract the XUID from the connection
-        String xuid = extractXuid(connection);
-        if (xuid == null) {
+        // Get the XUID directly from the Connection API
+        String xuid = connection.xuid();
+        if (xuid == null || xuid.isEmpty()) {
             return;
         }
 
@@ -54,10 +53,10 @@ public class IdentitySwitchListener {
             return;
         }
 
-        String originalName = safeGetName(connection);
-        logger.info("AuthMe identity switch: applying Bedrock switch for XUID '{}' "
-            + "(original: '{}', target: '{}', uuid: {})",
-            xuid, originalName, pending.getTargetName(), pending.getTargetUuid());
+        String originalName = connection.javaUsername();
+        logger.info("AuthMe identity switch: applying Bedrock switch for XUID '"
+            + xuid + "' (original: '" + originalName + "', target: '"
+            + pending.getTargetName() + "', uuid: " + pending.getTargetUuid() + ")");
 
         // Modify the Geyser session to use the target identity
         boolean sessionModified = modifySessionIdentity(connection, pending);
@@ -66,79 +65,39 @@ public class IdentitySwitchListener {
         boolean floodgateModified = modifyFloodgatePlayer(connection, xuid, pending);
 
         if (sessionModified || floodgateModified) {
-            logger.info("AuthMe identity switch: successfully modified Bedrock session "
-                + "'{}' -> '{}' (session={}, floodgate={})",
-                originalName, pending.getTargetName(), sessionModified, floodgateModified);
+            logger.info("AuthMe identity switch: successfully modified Bedrock session '"
+                + originalName + "' -> '" + pending.getTargetName()
+                + "' (session=" + sessionModified + ", floodgate=" + floodgateModified + ")");
         } else {
-            logger.warn("AuthMe identity switch: could not modify session or FloodgatePlayer "
-                + "for XUID '{}'. The identity switch may not work.", xuid);
+            logger.warning("AuthMe identity switch: could not modify session or FloodgatePlayer "
+                + "for XUID '" + xuid + "'. The identity switch may not work.");
         }
     }
 
     /**
-     * Extracts the Xbox User ID from the Geyser connection.
-     */
-    private String extractXuid(GeyserConnection connection) {
-        // Try getting XUID via FloodgateApi first
-        try {
-            UUID uuid = connection.uuid();
-            if (uuid != null) {
-                Class<?> floodgateApiClass = Class.forName("org.geysermc.floodgate.api.FloodgateApi");
-                Object api = floodgateApiClass.getMethod("getInstance").invoke(null);
-                Object player = floodgateApiClass.getMethod("getPlayer", UUID.class).invoke(api, uuid);
-                if (player != null) {
-                    String xuid = (String) player.getClass().getMethod("getXuid").invoke(player);
-                    if (xuid != null && !xuid.isEmpty()) {
-                        return xuid;
-                    }
-                }
-            }
-        } catch (Exception ignored) {
-            // Floodgate not available or player not found
-        }
-
-        // Try getting XUID from the GeyserSession's internal state
-        try {
-            Object session = connection;
-            // GeyserConnection at runtime is typically a GeyserSession
-            Field xuidField = findField(session.getClass(), "xuid", "xboxUid");
-            if (xuidField != null) {
-                xuidField.setAccessible(true);
-                Object xuidValue = xuidField.get(session);
-                if (xuidValue instanceof String xuid && !xuid.isEmpty()) {
-                    return xuid;
-                }
-            }
-        } catch (Exception ignored) {
-        }
-
-        return null;
-    }
-
-    /**
-     * Modifies the GeyserSession's username and UUID via reflection.
+     * Modifies the GeyserSession's javaUsername and javaUuid via reflection.
      */
     private boolean modifySessionIdentity(GeyserConnection connection,
                                            PendingSwitchStore.PendingSwitchData data) {
         boolean modified = false;
         try {
-            // Modify the username
-            Field nameField = findField(connection.getClass(), "username", "name", "javaUsername");
+            // Modify the java username
+            Field nameField = findField(connection.getClass(), "javaUsername", "username", "name");
             if (nameField != null) {
                 nameField.setAccessible(true);
                 nameField.set(connection, data.getTargetName());
                 modified = true;
             }
 
-            // Modify the UUID
-            Field uuidField = findField(connection.getClass(), "uuid", "javaUuid", "profileId");
+            // Modify the java UUID
+            Field uuidField = findField(connection.getClass(), "javaUuid", "uuid", "profileId");
             if (uuidField != null) {
                 uuidField.setAccessible(true);
                 uuidField.set(connection, data.getTargetUuid());
                 modified = true;
             }
         } catch (Exception e) {
-            logger.warn("Could not modify GeyserSession identity via reflection: {}", e.getMessage());
+            logger.warning("Could not modify GeyserSession identity via reflection: " + e.getMessage());
         }
         return modified;
     }
@@ -160,7 +119,7 @@ public class IdentitySwitchListener {
                 return applyFloodgatePlayerChanges(fgPlayer, data);
             }
         } catch (Exception e) {
-            logger.debug("Could not get FloodgatePlayer from session: {}", e.getMessage());
+            logger.debug("Could not get FloodgatePlayer from session: " + e.getMessage());
         }
 
         // Strategy 2: Look up by XUID through FloodgateApi.getPlayers()
@@ -176,11 +135,11 @@ public class IdentitySwitchListener {
                     return applyFloodgatePlayerChanges(player, data);
                 }
             }
-            logger.debug("FloodgatePlayer not found in FloodgateApi.getPlayers() for XUID '{}'", xuid);
+            logger.debug("FloodgatePlayer not found in FloodgateApi.getPlayers() for XUID '" + xuid + "'");
         } catch (ClassNotFoundException e) {
             logger.debug("Floodgate API not available for player modification");
         } catch (Exception e) {
-            logger.warn("Could not modify FloodgatePlayer via API: {}", e.getMessage());
+            logger.warning("Could not modify FloodgatePlayer via API: " + e.getMessage());
         }
         return false;
     }
@@ -199,7 +158,7 @@ public class IdentitySwitchListener {
                     try {
                         Object player = getFlagMethod.invoke(connection, flagName);
                         if (player != null) {
-                            logger.debug("Found FloodgatePlayer via session flag '{}'", flagName);
+                            logger.debug("Found FloodgatePlayer via session flag '" + flagName + "'");
                             return player;
                         }
                     } catch (Exception ignored) {
@@ -244,23 +203,12 @@ public class IdentitySwitchListener {
                 uuidField.set(fgPlayer, data.getTargetUuid());
             }
 
-            logger.debug("Modified FloodgatePlayer: name='{}', uuid={}",
-                data.getTargetName(), data.getTargetUuid());
+            logger.debug("Modified FloodgatePlayer: name='" + data.getTargetName()
+                + "', uuid=" + data.getTargetUuid());
             return true;
         } catch (Exception e) {
-            logger.warn("Could not modify FloodgatePlayer fields: {}", e.getMessage());
+            logger.warning("Could not modify FloodgatePlayer fields: " + e.getMessage());
             return false;
-        }
-    }
-
-    /**
-     * Safely gets the name from a GeyserConnection without throwing.
-     */
-    private String safeGetName(GeyserConnection connection) {
-        try {
-            return connection.name();
-        } catch (Exception e) {
-            return "<unknown>";
         }
     }
 

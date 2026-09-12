@@ -1,6 +1,6 @@
 package com.authme.geyser;
 
-import org.slf4j.Logger;
+import org.geysermc.geyser.api.extension.ExtensionLogger;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -23,9 +23,9 @@ public class PendingSwitchStore {
     private static final long EXPIRY_MILLIS = 5 * 60 * 1000L; // 5 minutes (slightly longer than AuthMe's 3-min window)
 
     private final Path switchDir;
-    private final Logger logger;
+    private final ExtensionLogger logger;
 
-    public PendingSwitchStore(Path serverRoot, Logger logger) {
+    public PendingSwitchStore(Path serverRoot, ExtensionLogger logger) {
         this.switchDir = serverRoot.resolve("plugins").resolve("AuthMe").resolve(SWITCH_DIR_NAME);
         this.logger = logger;
     }
@@ -50,7 +50,7 @@ public class PendingSwitchStore {
         try (InputStream in = Files.newInputStream(file)) {
             props.load(in);
         } catch (IOException e) {
-            logger.error("Failed to read pending switch file for XUID '{}': {}", xuid, e.getMessage());
+            logger.error("Failed to read pending switch file for XUID '" + xuid + "': " + e.getMessage());
             return null;
         }
 
@@ -58,7 +58,7 @@ public class PendingSwitchStore {
         try {
             Files.delete(file);
         } catch (IOException e) {
-            logger.warn("Could not delete pending switch file '{}': {}", file, e.getMessage());
+            logger.warning("Could not delete pending switch file '" + file + "': " + e.getMessage());
         }
 
         try {
@@ -68,20 +68,20 @@ public class PendingSwitchStore {
             long timestamp = Long.parseLong(props.getProperty("timestamp", "0"));
 
             if (targetName == null || targetName.isEmpty() || targetUuidStr == null || targetUuidStr.isEmpty()) {
-                logger.warn("Pending switch file for XUID '{}' has missing target data", xuid);
+                logger.warning("Pending switch file for XUID '" + xuid + "' has missing target data");
                 return null;
             }
 
             // Check expiry
             if (System.currentTimeMillis() - timestamp > EXPIRY_MILLIS) {
-                logger.info("Pending switch for XUID '{}' has expired", xuid);
+                logger.info("Pending switch for XUID '" + xuid + "' has expired");
                 return null;
             }
 
             UUID targetUuid = UUID.fromString(targetUuidStr);
             return new PendingSwitchData(targetName, targetUuid, ip, timestamp);
         } catch (Exception e) {
-            logger.error("Failed to parse pending switch for XUID '{}': {}", xuid, e.getMessage());
+            logger.error("Failed to parse pending switch for XUID '" + xuid + "': " + e.getMessage());
             return null;
         }
     }
@@ -104,14 +104,14 @@ public class PendingSwitchStore {
                     long timestamp = Long.parseLong(props.getProperty("timestamp", "0"));
                     if (now - timestamp > EXPIRY_MILLIS) {
                         Files.delete(file);
-                        logger.debug("Cleaned up expired pending switch file: {}", file.getFileName());
+                        logger.debug("Cleaned up expired pending switch file: " + file.getFileName());
                     }
                 } catch (Exception e) {
                     // Skip files we can't parse
                 }
             }
         } catch (IOException e) {
-            logger.warn("Error during pending switch cleanup: {}", e.getMessage());
+            logger.warning("Error during pending switch cleanup: " + e.getMessage());
         }
     }
 
