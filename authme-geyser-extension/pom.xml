@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>com.authme</groupId>
+    <artifactId>authme-geyser-extension</artifactId>
+    <version>1.0.0</version>
+    <packaging>jar</packaging>
+
+    <name>AuthMe Geyser Extension</name>
+    <description>Geyser Extension for AuthMe identity switch support for Bedrock players</description>
+
+    <properties>
+        <maven.compiler.source>21</maven.compiler.source>
+        <maven.compiler.target>21</maven.compiler.target>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+
+        <!--
+            Geyser Extension API 版本配置
+            这是 provided 依赖，只在编译时使用，运行时由 Geyser 进程提供。
+            版本号必须与服务器上运行的 Geyser 版本一致（extension.yml 的 api 字段同此值）：
+            查看服务器版本：启动日志搜索 "Geyser" 或执行 /geyser version
+            如果服务器升级了 Geyser 大版本（如 2.11 → 2.12），需同步修改此版本号
+            和 extension.yml 中的 api 字段。
+        -->
+        <geyser.version>2.11.2-SNAPSHOT</geyser.version>
+    </properties>
+
+    <repositories>
+        <!-- Geyser & Floodgate -->
+        <repository>
+            <id>opencollab-snapshot</id>
+            <url>https://repo.opencollab.dev/maven-snapshots/</url>
+            <releases>
+                <enabled>false</enabled>
+            </releases>
+            <snapshots>
+                <enabled>true</enabled>
+            </snapshots>
+        </repository>
+        <repository>
+            <id>opencollab-release</id>
+            <url>https://repo.opencollab.dev/main/</url>
+        </repository>
+    </repositories>
+
+    <dependencies>
+        <!-- Geyser Extension API (内部类与 Floodgate 均通过反射访问，无需其他依赖) -->
+        <dependency>
+            <groupId>org.geysermc.geyser</groupId>
+            <artifactId>api</artifactId>
+            <version>${geyser.version}</version>
+            <scope>provided</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.13.0</version>
+                <configuration>
+                    <source>21</source>
+                    <target>21</target>
+                    <release>21</release>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+</project>

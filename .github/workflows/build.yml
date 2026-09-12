@@ -23,14 +23,24 @@ jobs:
           cache: maven
 
       # 与本地成功构建一致的命令；跳过测试加快编译
-      - name: Build with Maven
+      - name: Build AuthMe
         run: mvn -B install -DskipTests -Dmaven.javadoc.skip=true
 
-      - name: Upload plugin jar
+      - name: Build Geyser Extension
+        run: mvn -B package -DskipTests -Dmaven.javadoc.skip=true --file authme-geyser-extension/pom.xml
+
+      - name: Upload AuthMe plugin jar
         uses: actions/upload-artifact@v4
         with:
           name: AuthMeReReloaded-${{ github.sha }}
           path: |
             target/*.jar
             !target/original-*.jar
+          if-no-files-found: error
+
+      - name: Upload Geyser Extension jar
+        uses: actions/upload-artifact@v4
+        with:
+          name: AuthMe-Geyser-Extension-${{ github.sha }}
+          path: authme-geyser-extension/target/authme-geyser-extension-*.jar
           if-no-files-found: error

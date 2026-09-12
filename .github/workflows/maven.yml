@@ -21,13 +21,22 @@ jobs:
           distribution: 'zulu'
           java-version: ${{ matrix.jdkversion }}
           cache: 'maven'
-      - name: Build
+      - name: Build AuthMe
         run: mvn -V -B clean package --file pom.xml
-      - name: Upload Artifacts
+      - name: Build Geyser Extension
+        run: mvn -V -B clean package --file authme-geyser-extension/pom.xml
+      - name: Upload AuthMe Artifact
         uses: actions/upload-artifact@v7
         id: upload
         with:
+          name: AuthMe
           path: target/AuthMe-*-FORK-Universal.jar
+          archive: false
+      - name: Upload Geyser Extension Artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: AuthMe-Geyser-Extension
+          path: authme-geyser-extension/target/authme-geyser-extension-*.jar
           archive: false
   runtime-test:
     name: Plugin Runtime Test
