@@ -66,7 +66,23 @@
 - `messages_en/zhcn/zhhk.yml`、`help_en/zhcn/zhhk.yml`、`plugin.yml`
 - `.trae-html-share-packages/src/main/resources/` 下 5 个 `*.html.zip`（内容不变）
 
-## 六、后续可继续的工作（新会话候选）
+## 六、会话 2：UUID 修复（2026-09-12，未提交）
+
+**用户反馈的 bug**：切换身份后目标账号名字正确，但 UUID 不是目标账号自己的（是重新生成的）。
+
+**根因**：`MySQL.buildAuthFromResultSet` 读取了 `PLAYER_UUID` 列，但 **SQLite、H2、PostgreSQL 的 `buildAuthFromResultSet` 都没读 UUID** → 这些数据源下 `getAuth().getUuid()` 永远为 null → `resolveTargetUuid` 回退到 `computeOfflineUuid`（按名字重新生成的离线 UUID）。默认数据源 SQLite 必现。
+
+**修复（4 处，工作区未提交，构建已通过 `mvn -DskipTests package`，产物 05:17）**：
+1. `datasource/SQLite.java` — `buildAuthFromResultSet` 读取 `PLAYER_UUID`（`UuidUtils.parseUuidSafely`），新增 imports
+2. `datasource/H2.java` — 同上
+3. `datasource/PostgreSqlDataSource.java` — 同上
+4. `identity/IdentityMenuService.java` — `createAccountItem` 的 lore 第一行新增 `UUID: <uuid>`（深灰色，与当前账号项格式一致），显示的就是 DB 中的注册 UUID
+
+**UUID 数据流（已验证）**：注册时 `PlayerAuthBuilderHelper.createPlayerAuth` 存 `player.getUniqueId()` → `saveAuth` 写入 `AuthMeColumns.UUID` 列（建表/ALTER 保证列存在）→ 修复后 `getAuth` 读回 → 菜单显示 & `resolveTargetUuid` 直接使用 → Paper `setId` / ProtocolLib `WrappedGameProfile(uuid, name)` 原样传递。`CacheDataSource.getAuth` 委托 `source.getAuth`，同样受益。
+
+**已知边界**：老账号若 DB 中 UUID 为 NULL（注册早于 UUID 列），仍回退离线 UUID；正常新注册账号都有 UUID。
+
+## 七、后续可继续的工作（新会话候选）
 
 1. **合并分支**：将 `trae/agent-0iHQBQ` 合并到 `origin/feat/agent-mail`（合并/创建 PR）
 2. **功能验证**：在测试服验证 /lg 菜单、切换、重连改写与自动登录（含基岩版账号场景）

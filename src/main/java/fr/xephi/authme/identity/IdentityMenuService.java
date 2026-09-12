@@ -232,6 +232,7 @@ public class IdentityMenuService {
             : ChatColor.GREEN + " [" + messages.retrieveSingle(player, MessageKey.IDENTITY_LORE_JAVA) + "]";
         meta.setDisplayName(ChatColor.YELLOW + entry.getRealName() + edition);
         List<String> lore = new ArrayList<>();
+        lore.add(ChatColor.DARK_GRAY + "UUID: " + entry.getUuid());
         lore.add(ChatColor.GRAY + messages.retrieveSingle(player, MessageKey.IDENTITY_LORE_CLICK_SWITCH));
         meta.setLore(lore);
         item.setItemMeta(meta);
