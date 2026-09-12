@@ -84,7 +84,11 @@ public class EmailConfirmCommand extends PlayerCommand {
                 processRegistrationConfirmation(player, playerName, arguments.get(0));
                 return;
             }
-            commonService.send(player, MessageKey.LOGIN_MESSAGE);
+            if (dataSource.isAuthAvailable(playerName)) {
+                commonService.send(player, MessageKey.LOGIN_MESSAGE);
+            } else {
+                commonService.send(player, MessageKey.REGISTER_MESSAGE);
+            }
             return;
         }
 

@@ -145,7 +145,7 @@ captcha:
     wrong_captcha: '&c错误的验证码.'
     valid_captcha: '&a*** 验证通过 ***'
     captcha_for_registration: '&7请输入 /captcha %captcha_code 来验证操作.'
-    register_captcha_valid: '&a验证通过, 现在可以使用 /register 注册啦!'
+    register_captcha_valid: '&a验证通过, 现在可以使用 /reg <邮箱> 注册啦!'
 
 # Verification code
 verification:
