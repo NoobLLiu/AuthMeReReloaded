@@ -470,6 +470,15 @@ public enum MessageKey {
     /** The identity you switched to was taken while you were reconnecting. */
     IDENTITY_SWITCH_OCCUPIED_ON_REJOIN("identity.occupied_on_rejoin", "%target%"),
 
+    /** Manual UUID sync (/lg sync): the UUID has been recorded. */
+    IDENTITY_SYNC_SUCCESS("identity.sync_success", "%uuid%"),
+
+    /** Manual UUID sync (/lg sync): the stored UUID is already up to date. */
+    IDENTITY_SYNC_ALREADY("identity.sync_already"),
+
+    /** Manual UUID sync (/lg sync): the UUID could not be saved. */
+    IDENTITY_SYNC_FAILED("identity.sync_failed"),
+
     /** Identity switched and automatically logged in. */
     IDENTITY_SWITCHED_AUTO_LOGGED_IN("identity.auto_logged_in");
 

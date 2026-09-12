@@ -111,6 +111,21 @@
 
 **注意**：`EmailConfirmCommand` 的迁移确认路径（processMigrationConfirmation）走 AccountMigrationService（已记录 UUID）；`AsyncAddEmail` 只发验证码，持久化在 EmailConfirmCommand。
 
+## 六之四、会话 5：/lg sync 手动同步指令（2026-09-12，未提交）
+
+**背景**：用户反馈旧账号登录后仍未同步 UUID（排查结论：最新 jar 中所有登录路径——密码登录/会话恢复/forceLogin/迁移——均经 `AsynchronousLogin.performLogin` 且同步代码在迁移拦截之后，理论上已覆盖；最可能是服务器未部署会话 4 的 jar 或环境差异。updateUuid 的 SQL 机制与 updateSchemaVersion 相同，后者已在生产验证）。用户要求加手动同步指令。
+
+**新增 `/lg sync`**（7 个文件，构建通过）：
+1. `CommandInitializer.java` — /lg 注册新增 OPTIONAL 参数 `action`（'sync'），否则 CommandMapper 会因参数个数不符返回 INCORRECT_ARGUMENTS
+2. `IdentityMenuCommand.java` — 注入 IdentitySwitchManager；已登录（沿用 NOT_LOGGED_IN 检查，防未认证玩家写他人账号 UUID）且首参数为 sync（忽略大小写）→ `identitySwitchManager.syncOwnUuid(player)`；否则开菜单
+3. `IdentitySwitchManager.syncOwnUuid(Player)` — 异步 `dataSource.getAuth(nameLower)`（直接读 DB，不用 playerCache，DB 为准）→ uuid 相等发 ALREADY；否则 setUuid+updateUuid → SUCCESS（带 %uuid% 替换）/FAILED；成功记 info 日志
+4. `MessageKey.java` — 新增 `IDENTITY_SYNC_SUCCESS("identity.sync_success","%uuid%")`、`IDENTITY_SYNC_ALREADY`、`IDENTITY_SYNC_FAILED`
+5. `messages_en/zhcn/zhhk.yml` — identity 段各新增 sync_success/sync_already/sync_failed
+6. `help_en/zhcn/zhhk.yml` — /lg detailedDescription 补充 sync 说明
+7. `plugin.yml` — lg usage 更新为 `/lg [sync]`
+
+**用法**：玩家登录后执行 `/lg sync` → 数据库 UUID 列更新为当前连接 UUID → /lg 菜单显示真实 UUID → 可正常切换。若提示"已是最新"但仍未同步，说明 DB 值与连接 UUID 一致但问题在别处（查 DB uuid 列 / 检查部署的 jar 版本）。
+
 ## 七、后续可继续的工作（新会话候选）
 
 1. **合并分支**：将 `trae/agent-0iHQBQ` 合并到 `origin/feat/agent-mail`（合并/创建 PR）

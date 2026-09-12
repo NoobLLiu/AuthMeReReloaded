@@ -218,3 +218,6 @@ identity:
   switch_conflict: '&c该身份正被其他人切换，请稍后再试'
   occupied_on_rejoin: '&c身份 %target% 已被占用，本次切换未生效，请正常登录后重试'
   auto_logged_in: '&a身份已切换，已自动登录'
+  sync_success: '&a已同步当前账号的UUID：%uuid%'
+  sync_already: '&7当前账号的UUID已是最新，无需同步'
+  sync_failed: '&cUUID同步失败，请联系管理员查看后台日志'

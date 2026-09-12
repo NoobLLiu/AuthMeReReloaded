@@ -129,6 +129,37 @@ public class IdentitySwitchManager {
     }
 
     /**
+     * Manually syncs the UUID of the player's own account: the UUID the player is currently
+     * connected with is recorded as the account's UUID in the database. Triggered by the
+     * {@code /lg sync} command.
+     *
+     * @param player the player who requests the sync (must be logged in)
+     */
+    public void syncOwnUuid(Player player) {
+        final String name = player.getName();
+        final String nameLower = name.toLowerCase(Locale.ROOT);
+        bukkitService.runTaskAsynchronously(() -> {
+            PlayerAuth auth = dataSource.getAuth(nameLower);
+            if (auth == null) {
+                sendMessage(player, MessageKey.IDENTITY_SWITCH_TARGET_GONE);
+                return;
+            }
+            UUID uuid = player.getUniqueId();
+            if (uuid.equals(auth.getUuid())) {
+                sendMessage(player, MessageKey.IDENTITY_SYNC_ALREADY);
+                return;
+            }
+            auth.setUuid(uuid);
+            if (dataSource.updateUuid(auth)) {
+                logger.info(String.format("UUID of account '%s' manually synced to %s", name, uuid));
+                sendMessage(player, MessageKey.IDENTITY_SYNC_SUCCESS, uuid.toString());
+            } else {
+                sendMessage(player, MessageKey.IDENTITY_SYNC_FAILED);
+            }
+        });
+    }
+
+    /**
      * Returns the pending switch recorded for the given account, without consuming it.
      *
      * @param sourceName the name the connecting player joined with (any casing)

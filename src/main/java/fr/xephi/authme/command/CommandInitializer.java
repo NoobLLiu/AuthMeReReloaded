@@ -155,7 +155,9 @@ public class CommandInitializer {
             .description("Identity menu command")
             .detailedDescription("Command to view your login information and switch between the accounts "
                 + "bound to your email address. Switching disconnects you; reconnect within three minutes "
-                + "to enter the server as the selected account.")
+                + "to enter the server as the selected account. Use '/lg sync' to manually record the UUID "
+                + "you are currently connected with into your account.")
+            .withArgument("action", "'sync' to manually sync the account's UUID", OPTIONAL)
             .executableCommand(IdentityMenuCommand.class)
             .register();
 
