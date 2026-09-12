@@ -25,6 +25,7 @@ import fr.xephi.authme.listener.DoubleLoginFixListener;
 import fr.xephi.authme.listener.EntityListener;
 import fr.xephi.authme.listener.IdentityAutoLoginListener;
 import fr.xephi.authme.listener.IdentityMenuClickListener;
+import fr.xephi.authme.listener.IdentitySwitchJoinListener;
 import fr.xephi.authme.listener.LoginLocationFixListener;
 import fr.xephi.authme.listener.PlayerListener;
 import fr.xephi.authme.listener.PlayerListener111;
@@ -341,6 +342,7 @@ public class AuthMe extends JavaPlugin {
         pluginManager.registerEvents(injector.getSingleton(PreLoginIdentityListener.class), this);
         pluginManager.registerEvents(injector.getSingleton(IdentityAutoLoginListener.class), this);
         pluginManager.registerEvents(injector.getSingleton(IdentityMenuClickListener.class), this);
+        pluginManager.registerEvents(injector.getSingleton(IdentitySwitchJoinListener.class), this);
 
 
         // Try to register 1.8+ player listeners

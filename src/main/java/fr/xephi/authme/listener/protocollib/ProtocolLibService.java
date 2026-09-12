@@ -107,18 +107,16 @@ public class ProtocolLibService implements SettingsDependent {
             i18nGetLocalePacketAdapter = null;
         }
 
-        // Identity switch: on servers without Paper's profile API, rewriting the login start
-        // packet is the fallback mechanism to change a player's identity on reconnection
-        if (!PreLoginIdentityListener.isPaperProfileSupported()) {
-            if (loginStartRewriteAdapter == null) {
-                loginStartRewriteAdapter = new LoginStartRewriteAdapter(plugin, identitySwitchManager);
-                loginStartRewriteAdapter.register();
-                logger.warning("Paper profile API not detected: identity switch rewriting uses the "
-                    + "ProtocolLib login packet fallback (limited support for Bedrock identities)");
-            }
-        } else if (loginStartRewriteAdapter != null) {
-            loginStartRewriteAdapter.unregister();
-            loginStartRewriteAdapter = null;
+        // Identity switch: rewriting the login start packet is the primary mechanism to change
+        // a player's identity on reconnection. Paper's profile API (used in
+        // PreLoginIdentityListener) only works for Java players — for Bedrock players going
+        // through Geyser/Floodgate the profile change is ignored because Floodgate creates the
+        // Player from its own GeyserSession. The packet-level rewrite bypasses this by modifying
+        // the Login Start packet before Floodgate processes it.
+        if (loginStartRewriteAdapter == null) {
+            loginStartRewriteAdapter = new LoginStartRewriteAdapter(plugin, identitySwitchManager);
+            loginStartRewriteAdapter.register();
+            logger.info("Identity switch: registered ProtocolLib login packet rewrite adapter");
         }
 
         this.isEnabled = true;

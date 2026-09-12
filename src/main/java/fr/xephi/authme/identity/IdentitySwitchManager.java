@@ -206,6 +206,25 @@ public class IdentitySwitchManager {
     }
 
     /**
+     * Consumes the pending switch that targets the given account, if one exists.
+     * This is the primary consumption path: called from {@link PlayerJoinEvent} when
+     * the player actually joins with the target identity.
+     *
+     * @param targetNameLower the lowercase target name to look up
+     * @return the consumed PendingSwitch, or null if none was found
+     */
+    public PendingSwitch consumePendingSwitchByTarget(String targetNameLower) {
+        String sourceLower = sourceByTarget.get(targetNameLower);
+        if (sourceLower == null) {
+            return null;
+        }
+        PendingSwitch pending = pendingBySource.get(sourceLower);
+        sourceByTarget.remove(targetNameLower);
+        pendingBySource.remove(sourceLower);
+        return pending;
+    }
+
+    /**
      * Grants an auto login for the given account after its identity was rewritten.
      *
      * @param targetNameLower the lowercase name of the target account

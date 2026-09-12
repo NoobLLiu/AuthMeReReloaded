@@ -470,6 +470,9 @@ public enum MessageKey {
     /** The identity you switched to was taken while you were reconnecting. */
     IDENTITY_SWITCH_OCCUPIED_ON_REJOIN("identity.occupied_on_rejoin", "%target%"),
 
+    /** Bedrock player cannot switch to a Java identity (Floodgate overrides the rewrite). */
+    IDENTITY_SWITCH_BEDROCK_UNSUPPORTED("identity.bedrock_unsupported"),
+
     /** Manual UUID sync (/lg sync): the UUID has been recorded. */
     IDENTITY_SYNC_SUCCESS("identity.sync_success", "%uuid%"),
 

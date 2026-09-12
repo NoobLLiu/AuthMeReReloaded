@@ -29,7 +29,8 @@ class LoginStartRewriteAdapter extends PacketAdapter {
     private final IdentitySwitchManager identitySwitchManager;
 
     LoginStartRewriteAdapter(AuthMe plugin, IdentitySwitchManager identitySwitchManager) {
-        super(plugin, ListenerPriority.HIGH, PacketType.Login.Client.START);
+        // MONITOR priority: run after Floodgate's adapter so we rewrite the already-transformed packet
+        super(plugin, ListenerPriority.MONITOR, PacketType.Login.Client.START);
         this.identitySwitchManager = identitySwitchManager;
     }
 
@@ -65,8 +66,9 @@ class LoginStartRewriteAdapter extends PacketAdapter {
             }
 
             if (writeLoginIdentity(packet, pending)) {
-                identitySwitchManager.consumePendingSwitch(sourceLower);
-                identitySwitchManager.markAutoLogin(pending.getTargetName(), ip);
+                // Don't consume the PendingSwitch or mark auto-login here: the final
+                // Player identity is only resolved after the AsyncPlayerPreLoginEvent
+                // and PlayerJoinEvent, where the actual consumption is handled.
                 logger.info(String.format("Rewrote login packet identity: '%s' -> '%s'",
                     clientName, pending.getTargetRealName()));
             }

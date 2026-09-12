@@ -104,8 +104,9 @@ public class PreLoginIdentityListener implements Listener {
             return;
         }
 
-        identitySwitchManager.consumePendingSwitch(sourceLower);
-        identitySwitchManager.markAutoLogin(pending.getTargetName(), ip);
+        // Don't consume the PendingSwitch or mark auto-login here: for Bedrock players
+        // the Paper profile rewrite is ignored by Floodgate's Player creation, so we must
+        // defer the decision to PlayerJoinEvent where the actual Player identity is known.
         logger.info(String.format("Rewrote login identity: '%s' -> '%s' (%s)",
             event.getName(), pending.getTargetRealName(), pending.getTargetUuid()));
     }

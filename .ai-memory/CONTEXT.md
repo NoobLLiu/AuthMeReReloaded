@@ -146,6 +146,42 @@
 - 已有服务器且已配置过 `DataSource.mySQLPlayerUUID: <custom_name>`：无需任何操作，列名已生效，UUID 本就存入
 - `Columns.PLAYER_UUID`（SQLite/MariaDB 等专用 handler 读取的列名）也会随 config 变化，无需额外处理
 
+## 六之六、会话 7：基岩版身份切换修复（2026-09-12，未提交）
+
+**用户问题**：基岩版玩家通过 Geyser/Floodgate 使用 /lg 切换身份后，重连仍然是原始身份。
+
+**根因分析**（两个 bug）：
+
+Bug 1 — Paper profile API 对 Floodgate 无效：
+- `PreLoginIdentityListener` 在 `AsyncPlayerPreLoginEvent`(HIGHEST) 中通过 Paper API 修改 PlayerProfile
+- 但 Floodgate 从自己的 GeyserSession 创建 Player 对象，**完全忽略事件中的 profile 修改**
+- 结果：即使日志显示 "Rewrote login identity"，Player 仍然以原始基岩版身份加入
+
+Bug 2 — PendingSwitch 消费过早：
+- `PreLoginIdentityListener` 和 `LoginStartRewriteAdapter` 都在 PreLogin 阶段消费 PendingSwitch
+- 但 Player 的实际身份要到 PlayerJoinEvent 才能确定
+- 导致：switch 被消费后，如果实际身份没变（基岩版情况），switch 丢失无法恢复
+
+**修复（8 个文件，构建通过）**：
+
+1. `ProtocolLibService.java` — `LoginStartRewriteAdapter` 始终注册（不再依赖 `!isPaperProfileSupported()`），因为包级别重写是处理基岩版玩家的唯一有效方式
+2. `LoginStartRewriteAdapter.java` — 优先级从 HIGH 改为 MONITOR（在 Floodgate 之后执行，才能看到转换后的包数据）；不再消费 PendingSwitch 和标记 auto-login（延迟到 PlayerJoinEvent）
+3. `PreLoginIdentityListener.java` — 不再消费 PendingSwitch 和标记 auto-login（同上，延迟到 PlayerJoinEvent）
+4. `IdentitySwitchJoinListener.java` — **新增** PlayerJoinEvent 处理器（MONITOR 优先级，20 tick 延迟）：
+   - 通过 `consumePendingSwitchByTarget(nameLower)` 检查是否有 switch 指向当前加入的玩家
+   - 若有（Java 玩家或基岩版重写成功）→ 消费 switch，标记 auto-login
+   - 若无且玩家有 PendingSwitch 但名字不匹配（基岩版重写失败）→ 保持 switch 活跃，发送 bedrock_unsupported 提示
+5. `IdentitySwitchManager.java` — 新增 `consumePendingSwitchByTarget(targetNameLower)` 方法（通过 sourceByTarget 反查并消费）
+6. `AuthMe.java` — 注册 IdentitySwitchJoinListener
+7. `MessageKey.java` — 新增 `IDENTITY_SWITCH_BEDROCK_UNSUPPORTED`
+8. `messages_en/zhcn/zhhk.yml` — 新增 bedrock_unsupported 文案
+
+**修复后的流程**：
+- Java 玩家：包重写 → profile 重写 → Player 以目标身份加入 → PlayerJoinEvent 消费 switch → 自动登录 ✓
+- 基岩→Java 切换：包重写被 Floodgate 覆盖 → Player 以原始身份加入 → PlayerJoinEvent 检测不匹配 → switch 保持活跃 → 提示不支持 ✓
+
+**当前限制**：基岩版玩家暂时无法切换到 Java 版身份。这是 Floodgate 的架构限制（从自己的 GeyserSession 创建 Player，不遵循事件 profile）。未来可通过 Floodgate API 直接干预来实现。
+
 ## 七、后续可继续的工作（新会话候选）
 
 1. **合并分支**：将 `trae/agent-0iHQBQ` 合并到 `origin/feat/agent-mail`（合并/创建 PR）
