@@ -408,7 +408,82 @@ public enum MessageKey {
     DAY("time.day"),
 
     /** days */
-    DAYS("time.days");
+    DAYS("time.days"),
+
+    /** Identity menu (/lg): title of the inventory menu. */
+    IDENTITY_MENU_TITLE("identity.menu_title"),
+
+    /** Identity menu: the email address is not bound. */
+    IDENTITY_EMAIL_NOT_BOUND("identity.email_not_bound"),
+
+    /** Identity menu: no other account is registered under the email. */
+    IDENTITY_MENU_NO_OTHER_ACCOUNTS("identity.no_other_accounts"),
+
+    /** Identity menu lore: currently logged-in account. */
+    IDENTITY_LORE_CURRENT("identity.lore_current"),
+
+    /** Identity menu lore: bound email address. */
+    IDENTITY_LORE_EMAIL("identity.lore_email"),
+
+    /** Identity menu lore: click to switch to this identity. */
+    IDENTITY_LORE_CLICK_SWITCH("identity.lore_click_switch"),
+
+    /** Identity menu lore: Bedrock account. */
+    IDENTITY_LORE_BEDROCK("identity.lore_bedrock"),
+
+    /** Identity menu lore: Java account. */
+    IDENTITY_LORE_JAVA("identity.lore_java"),
+
+    /** Identity menu lore: previous page. */
+    IDENTITY_LORE_PAGE_PREV("identity.lore_page_prev"),
+
+    /** Identity menu lore: next page. */
+    IDENTITY_LORE_PAGE_NEXT("identity.lore_page_next"),
+
+    /** Identity menu lore: close the menu. */
+    IDENTITY_LORE_CLOSE("identity.lore_close"),
+
+    /** Switch successful, please rejoin the server. */
+    IDENTITY_SWITCH_SUCCESS_KICK("identity.switch_success_kick"),
+
+    /** You are already using this identity. */
+    IDENTITY_SWITCH_SELF("identity.switch_self"),
+
+    /** You must have an email address bound to your account to switch identities. */
+    IDENTITY_SWITCH_NOT_BOUND("identity.not_bound"),
+
+    /** The selected account no longer exists. */
+    IDENTITY_SWITCH_TARGET_GONE("identity.target_gone"),
+
+    /** No UUID recorded for the selected account yet: log in with it once to sync. */
+    IDENTITY_SWITCH_UUID_MISSING("identity.uuid_missing"),
+
+    /** The selected account does not belong to the same email address. */
+    IDENTITY_SWITCH_EMAIL_MISMATCH("identity.email_mismatch"),
+
+    /** The selected account is currently online. */
+    IDENTITY_SWITCH_TARGET_OCCUPIED("identity.target_occupied", "%target%"),
+
+    /** Another player is already switching to this identity. */
+    IDENTITY_SWITCH_CONFLICT("identity.switch_conflict"),
+
+    /** The identity you switched to was taken while you were reconnecting. */
+    IDENTITY_SWITCH_OCCUPIED_ON_REJOIN("identity.occupied_on_rejoin", "%target%"),
+
+    /** Bedrock player cannot switch to a Java identity (Floodgate overrides the rewrite). */
+    IDENTITY_SWITCH_BEDROCK_UNSUPPORTED("identity.bedrock_unsupported"),
+
+    /** Manual UUID sync (/lg sync): the UUID has been recorded. */
+    IDENTITY_SYNC_SUCCESS("identity.sync_success", "%uuid%"),
+
+    /** Manual UUID sync (/lg sync): the stored UUID is already up to date. */
+    IDENTITY_SYNC_ALREADY("identity.sync_already"),
+
+    /** Manual UUID sync (/lg sync): the UUID could not be saved. */
+    IDENTITY_SYNC_FAILED("identity.sync_failed"),
+
+    /** Identity switched and automatically logged in. */
+    IDENTITY_SWITCHED_AUTO_LOGGED_IN("identity.auto_logged_in");
 
 
     private String key;

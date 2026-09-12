@@ -291,6 +291,19 @@ public class AsynchronousLogin implements AsynchronousProcess {
             auth.setLastIp(ip);
             dataSource.updateSession(auth);
 
+            // Keep the stored UUID in sync with the one the player actually logs in with:
+            // old accounts without a recorded UUID are captured here so the identity switch
+            // feature can hand out their own UUID instead of a regenerated one
+            if (!player.getUniqueId().equals(auth.getUuid())) {
+                auth.setUuid(player.getUniqueId());
+                if (dataSource.updateUuid(auth)) {
+                    logger.fine("Synced UUID of '" + player.getName() + "' to " + player.getUniqueId());
+                } else {
+                    logger.warning("Could not save the UUID of '" + player.getName()
+                        + "': check config value 'DataSource.mySQLPlayerUUID' in authme.yml");
+                }
+            }
+
             // TODO: send an update when a messaging service will be implemented (SESSION)
 
             // Successful login, so reset the captcha & temp ban count

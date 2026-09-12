@@ -116,6 +116,12 @@ public class EmailConfirmCommand extends PlayerCommand {
             saved = saved && dataSource.updatePassword(auth);
         }
         if (saved) {
+            // Record the UUID together with the email binding, so the identity switch
+            // feature can hand out the account's own UUID instead of a regenerated one
+            auth.setUuid(player.getUniqueId());
+            if (!dataSource.updateUuid(auth)) {
+                logger.warning("Could not save UUID for player '" + player.getName() + "'");
+            }
             playerCache.updatePlayer(auth);
             pendingEmailChangeCache.remove(playerName);
             commonService.send(player, MessageKey.EMAIL_CONFIRM_SUCCESS);

@@ -152,6 +152,14 @@ public interface DataSource extends Reloadable {
     boolean updateSchemaVersion(PlayerAuth auth);
 
     /**
+     * Updates the UUID of the given auth in the data source.
+     *
+     * @param auth The PlayerAuth whose UUID should be updated
+     * @return True upon success, false upon failure
+     */
+    boolean updateUuid(PlayerAuth auth);
+
+    /**
      * Close the underlying connections to the data source.
      */
     void closeConnection();

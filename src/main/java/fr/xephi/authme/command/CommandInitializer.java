@@ -32,6 +32,7 @@ import fr.xephi.authme.command.executable.authme.VersionCommand;
 import fr.xephi.authme.command.executable.authme.debug.DebugCommand;
 import fr.xephi.authme.command.executable.captcha.CaptchaCommand;
 import fr.xephi.authme.command.executable.changepassword.ChangePasswordCommand;
+import fr.xephi.authme.command.executable.identity.IdentityMenuCommand;
 import fr.xephi.authme.command.executable.email.AddEmailCommand;
 import fr.xephi.authme.command.executable.email.ChangeEmailCommand;
 import fr.xephi.authme.command.executable.email.EmailBaseCommand;
@@ -147,6 +148,19 @@ public class CommandInitializer {
             .executableCommand(ChangePasswordCommand.class)
             .register();
 
+        // Register the base identity menu command (/lg)
+        CommandDescription identityBase = CommandDescription.builder()
+            .parent(null)
+            .labels("lg")
+            .description("Identity menu command")
+            .detailedDescription("Command to view your login information and switch between the accounts "
+                + "bound to your email address. Switching disconnects you; reconnect within three minutes "
+                + "to enter the server as the selected account. Use '/lg sync' to manually record the UUID "
+                + "you are currently connected with into your account.")
+            .withArgument("action", "'sync' to manually sync the account's UUID", OPTIONAL)
+            .executableCommand(IdentityMenuCommand.class)
+            .register();
+
         // Create totp base command
         CommandDescription totpBase = buildTotpBaseCommand();
 
@@ -173,7 +187,8 @@ public class CommandInitializer {
             .register();
 
         List<CommandDescription> baseCommands = ImmutableList.of(authMeBase, emailBase, loginBase, logoutBase,
-            registerBase, unregisterBase, changePasswordBase, totpBase, captchaBase, verificationBase);
+            registerBase, unregisterBase, changePasswordBase, identityBase, totpBase, captchaBase,
+            verificationBase);
 
         setHelpOnAllBases(baseCommands);
         commands = baseCommands;

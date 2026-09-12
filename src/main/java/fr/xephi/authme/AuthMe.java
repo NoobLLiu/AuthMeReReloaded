@@ -9,6 +9,8 @@ import fr.xephi.authme.api.v3.AuthMeApi;
 import fr.xephi.authme.command.CommandHandler;
 import fr.xephi.authme.command.TabCompleteHandler;
 import fr.xephi.authme.datasource.DataSource;
+import fr.xephi.authme.identity.IdentityMenuService;
+import fr.xephi.authme.identity.IdentitySwitchManager;
 import fr.xephi.authme.initialization.DataFolder;
 import fr.xephi.authme.initialization.DataSourceProvider;
 import fr.xephi.authme.initialization.MailSenderProvider;
@@ -21,12 +23,16 @@ import fr.xephi.authme.listener.BedrockAutoLoginListener;
 import fr.xephi.authme.listener.BlockListener;
 import fr.xephi.authme.listener.DoubleLoginFixListener;
 import fr.xephi.authme.listener.EntityListener;
+import fr.xephi.authme.listener.IdentityAutoLoginListener;
+import fr.xephi.authme.listener.IdentityMenuClickListener;
+import fr.xephi.authme.listener.IdentitySwitchJoinListener;
 import fr.xephi.authme.listener.LoginLocationFixListener;
 import fr.xephi.authme.listener.PlayerListener;
 import fr.xephi.authme.listener.PlayerListener111;
 import fr.xephi.authme.listener.PlayerListener19;
 import fr.xephi.authme.listener.PlayerListener19Spigot;
 import fr.xephi.authme.listener.PlayerListenerHigherThan18;
+import fr.xephi.authme.listener.PreLoginIdentityListener;
 import fr.xephi.authme.listener.PurgeListener;
 import fr.xephi.authme.listener.ServerListener;
 import fr.xephi.authme.mail.EmailService;
@@ -218,7 +224,7 @@ public class AuthMe extends JavaPlugin {
         try {
             TabCompleteHandler tabCompleteHandler = injector.getSingleton(TabCompleteHandler.class);
             String[] commandNames = {"authme", "email", "login", "logout", "register",
-                "unregister", "changepassword", "totp", "captcha", "verification"};
+                "unregister", "changepassword", "lg", "totp", "captcha", "verification"};
             for (String commandName : commandNames) {
                 Objects.requireNonNull(getCommand(commandName)).setTabCompleter(tabCompleteHandler);
             }
@@ -310,6 +316,8 @@ public class AuthMe extends JavaPlugin {
         // Trigger instantiation (class not used elsewhere)
         injector.getSingleton(BungeeReceiver.class);
         injector.getSingleton(VelocityReceiver.class);
+        injector.getSingleton(IdentitySwitchManager.class);
+        injector.getSingleton(IdentityMenuService.class);
 
         // Trigger construction of API classes; they will keep track of the singleton
         injector.getSingleton(AuthMeApi.class);
@@ -329,6 +337,12 @@ public class AuthMe extends JavaPlugin {
         pluginManager.registerEvents(injector.getSingleton(BlockListener.class), this);
         pluginManager.registerEvents(injector.getSingleton(EntityListener.class), this);
         pluginManager.registerEvents(injector.getSingleton(ServerListener.class), this);
+
+        // Identity switch feature (/lg): rewrite identity on reconnection and auto login
+        pluginManager.registerEvents(injector.getSingleton(PreLoginIdentityListener.class), this);
+        pluginManager.registerEvents(injector.getSingleton(IdentityAutoLoginListener.class), this);
+        pluginManager.registerEvents(injector.getSingleton(IdentityMenuClickListener.class), this);
+        pluginManager.registerEvents(injector.getSingleton(IdentitySwitchJoinListener.class), this);
 
 
         // Try to register 1.8+ player listeners
