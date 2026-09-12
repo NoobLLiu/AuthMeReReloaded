@@ -12,7 +12,7 @@ import fr.xephi.authme.util.expiring.ExpiringMap;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.geysermc.floodgate.api.FloodgateApi;
-import org.geysermc.floodgate.api.FloodgatePlayer;
+import org.geysermc.floodgate.api.player.FloodgatePlayer;
 
 import javax.inject.Inject;
 import java.io.File;
