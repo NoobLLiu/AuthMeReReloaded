@@ -1,7 +1,6 @@
 id: authme-geyser
 name: AuthMe Geyser Extension
-version: '1.0.0'
-api-version: 1.0
 main: com.authme.geyser.AuthMeGeyserExtension
-description: Geyser extension for AuthMe identity switch - enables Bedrock players to switch identities
+api: 1.0
+version: '1.0.0'
 author: AuthMe
