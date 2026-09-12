@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>com.authme</groupId>
+    <artifactId>authme-geyser-extension</artifactId>
+    <version>1.0.0</version>
+    <packaging>jar</packaging>
+
+    <name>AuthMe Geyser Extension</name>
+    <description>Geyser Extension for AuthMe identity switch support for Bedrock players</description>
+
+    <properties>
+        <maven.compiler.source>21</maven.compiler.source>
+        <maven.compiler.target>21</maven.compiler.target>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    </properties>
+
+    <repositories>
+        <!-- Geyser & Floodgate -->
+        <repository>
+            <id>opencollab-snapshot</id>
+            <url>https://repo.opencollab.dev/maven-snapshots/</url>
+            <releases>
+                <enabled>false</enabled>
+            </releases>
+            <snapshots>
+                <enabled>true</enabled>
+            </snapshots>
+        </repository>
+        <repository>
+            <id>opencollab-release</id>
+            <url>https://repo.opencollab.dev/main/</url>
+        </repository>
+    </repositories>
+
+    <dependencies>
+        <!-- Geyser Extension API -->
+        <dependency>
+            <groupId>org.geysermc.geyser</groupId>
+            <artifactId>api</artifactId>
+            <version>2.4.3-SNAPSHOT</version>
+            <scope>provided</scope>
+        </dependency>
+
+        <!-- Geyser Core (for accessing internal GeyserSession) -->
+        <dependency>
+            <groupId>org.geysermc.geyser</groupId>
+            <artifactId>core</artifactId>
+            <version>2.4.3-SNAPSHOT</version>
+            <scope>provided</scope>
+        </dependency>
+
+        <!-- Floodgate API (for accessing FloodgatePlayer) -->
+        <dependency>
+            <groupId>org.geysermc.floodgate</groupId>
+            <artifactId>api</artifactId>
+            <version>2.2.3-SNAPSHOT</version>
+            <scope>provided</scope>
+        </dependency>
+
+        <!-- SLF4J for logging -->
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+            <version>2.0.13</version>
+            <scope>provided</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.13.0</version>
+                <configuration>
+                    <source>21</source>
+                    <target>21</target>
+                    <release>21</release>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+</project>

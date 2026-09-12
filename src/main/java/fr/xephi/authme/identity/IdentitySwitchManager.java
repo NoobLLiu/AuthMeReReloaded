@@ -9,10 +9,17 @@ import fr.xephi.authme.message.Messages;
 import fr.xephi.authme.output.ConsoleLoggerFactory;
 import fr.xephi.authme.service.BukkitService;
 import fr.xephi.authme.util.expiring.ExpiringMap;
+import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
+import org.geysermc.floodgate.api.FloodgateApi;
+import org.geysermc.floodgate.api.FloodgatePlayer;
 
 import javax.inject.Inject;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.OutputStream;
 import java.util.Locale;
+import java.util.Properties;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
@@ -25,6 +32,9 @@ public class IdentitySwitchManager {
 
     /** Minutes a recorded switch stays valid, counted from the moment it was initiated. */
     private static final long SWITCH_WINDOW_MINUTES = 3;
+
+    /** Directory where pending switch files are written for the Geyser Extension to read. */
+    private static final String GEYSER_SWITCH_DIR = "plugins/AuthMe/geyser-pending-switches";
 
     private final ConsoleLogger logger = ConsoleLoggerFactory.get(IdentitySwitchManager.class);
 
@@ -120,6 +130,15 @@ public class IdentitySwitchManager {
             sourceByTarget.put(targetLower, sourceLower);
             logger.info(String.format("Identity switch initiated: '%s' -> '%s'", sourceName,
                 targetAuth.getRealName()));
+
+            // If the source player is a Bedrock player, write pending switch to shared
+            // file for the Geyser Extension to read on reconnection
+            if (isBedrockPlayer(player)) {
+                String xuid = getBedrockXuid(player);
+                if (xuid != null) {
+                    writeGeyserPendingSwitch(xuid, pending);
+                }
+            }
 
             bukkitService.runTask(player, () -> {
                 player.closeInventory();
@@ -339,5 +358,68 @@ public class IdentitySwitchManager {
         return player.getAddress() == null || player.getAddress().getAddress() == null
             ? null
             : player.getAddress().getAddress().getHostAddress();
+    }
+
+    /**
+     * Returns whether the given player is a Bedrock player connected through Geyser+Floodgate.
+     *
+     * @param player the player to check
+     * @return true if the player is a Bedrock player
+     */
+    private boolean isBedrockPlayer(Player player) {
+        try {
+            if (Bukkit.getPluginManager().getPlugin("floodgate") == null) {
+                return false;
+            }
+            return FloodgateApi.getInstance().isFloodgateId(player.getUniqueId());
+        } catch (NoClassDefFoundError | Exception e) {
+            return false;
+        }
+    }
+
+    /**
+     * Returns the Xbox User ID (XUID) of a Bedrock player connected through Floodgate.
+     *
+     * @param player the Bedrock player
+     * @return the XUID, or null if unavailable
+     */
+    private String getBedrockXuid(Player player) {
+        try {
+            FloodgatePlayer fgPlayer = FloodgateApi.getInstance().getPlayer(player.getUniqueId());
+            return fgPlayer != null ? fgPlayer.getXuid() : null;
+        } catch (NoClassDefFoundError | Exception e) {
+            return null;
+        }
+    }
+
+    /**
+     * Writes the pending switch data to a shared properties file for the Geyser Extension to read.
+     * The file is named by the Bedrock player's XUID and placed in a shared directory.
+     *
+     * @param xuid the Bedrock player's Xbox User ID (used as the file name)
+     * @param pending the pending switch data to write
+     */
+    private void writeGeyserPendingSwitch(String xuid, PendingSwitch pending) {
+        File dir = new File(GEYSER_SWITCH_DIR);
+        if (!dir.exists() && !dir.mkdirs()) {
+            logger.warning("Could not create Geyser pending switch directory: " + dir.getAbsolutePath());
+            return;
+        }
+
+        File file = new File(dir, xuid + ".properties");
+        Properties props = new Properties();
+        props.setProperty("sourceName", pending.getSourceName());
+        props.setProperty("targetName", pending.getTargetRealName());
+        props.setProperty("targetUuid", pending.getTargetUuid().toString());
+        props.setProperty("ip", pending.getIp() != null ? pending.getIp() : "");
+        props.setProperty("timestamp", String.valueOf(System.currentTimeMillis()));
+
+        try (OutputStream out = new FileOutputStream(file)) {
+            props.store(out, "AuthMe Geyser pending switch - auto-generated, do not edit");
+            logger.info(String.format("Wrote Geyser pending switch for XUID '%s' -> '%s'",
+                xuid, pending.getTargetRealName()));
+        } catch (Exception e) {
+            logger.warning("Could not write Geyser pending switch file for XUID '" + xuid + "': " + e.getMessage());
+        }
     }
 }
