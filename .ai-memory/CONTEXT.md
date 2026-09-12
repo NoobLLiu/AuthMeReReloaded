@@ -82,6 +82,19 @@
 
 **已知边界**：老账号若 DB 中 UUID 为 NULL（注册早于 UUID 列），仍回退离线 UUID；正常新注册账号都有 UUID。
 
+## 六之二、会话 3：v1→v2 迁移补记 UUID（2026-09-12，未提交）
+
+**用户问题**：v1 账号迁移到 v2 时是否自动记录 UUID？——答案：之前**不会**（迁移只更新 email/password/schemaVersion）。
+
+**修改（5 处，构建通过 `mvn -DskipTests package`）**：
+1. `datasource/DataSource.java` — 新增接口方法 `boolean updateUuid(PlayerAuth auth)`（放在 updateSchemaVersion 之后）
+2. `datasource/AbstractSqlDataSource.java` — 实现 `updateUuid`：`columnsHandler.update(auth, AuthMeColumns.UUID)`（SQLite/H2/PostgreSQL/MySQL/MariaDB 全部继承）
+3. `datasource/CacheDataSource.java` — 包装实现（成功后 `cachedAuths.refresh`，同 updateEmail 模式）
+4. `service/AccountMigrationService.java` `completeEmailMigration` — `auth.setUuid(player.getUniqueId())` + `dataSource.updateUuid(auth)`（失败仅 warning 不阻断迁移）
+5. 同文件 `completePasswordMigration` — 同样补记 UUID
+
+**行为**：迁移完成时玩家在线，`player.getUniqueId()` 即该账号登录 UUID，写入 DB UUID 列；返回的 auth 对象也带 UUID。迁移后的账号即可被 /lg 正确显示与切换（配合会话 2 的 getAuth 修复）。DataSource 只有 AbstractSqlDataSource 与 CacheDataSource 两个直接实现，均已更新（已全库搜索确认，无测试 mock 实现会编译失败）。
+
 ## 七、后续可继续的工作（新会话候选）
 
 1. **合并分支**：将 `trae/agent-0iHQBQ` 合并到 `origin/feat/agent-mail`（合并/创建 PR）

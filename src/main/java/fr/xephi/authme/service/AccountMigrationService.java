@@ -191,12 +191,18 @@ public class AccountMigrationService {
         HashedPassword emailPassword = emailPasswordService.findPasswordByEmail(email);
 
         auth.setEmail(email);
+        auth.setUuid(player.getUniqueId());
         auth.setSchemaVersion(TARGET_SCHEMA_VERSION);
         boolean emailSaved = dataSource.updateEmail(auth);
         boolean versionSaved = dataSource.updateSchemaVersion(auth);
         if (!emailSaved || !versionSaved) {
             logger.warning("Failed to persist email migration for '" + name + "'");
             return null;
+        }
+        // Record the UUID the account logs in with, so the identity switch feature can
+        // hand out the account's own UUID instead of a regenerated one
+        if (!dataSource.updateUuid(auth)) {
+            logger.warning("Failed to save the UUID of the migrated account '" + name + "'");
         }
 
         if (emailPassword != null) {
@@ -234,6 +240,7 @@ public class AccountMigrationService {
         HashedPassword hashedPassword = passwordSecurity.computeHash(password, name);
         auth.setEmail(email);
         auth.setPassword(hashedPassword);
+        auth.setUuid(player.getUniqueId());
         auth.setSchemaVersion(TARGET_SCHEMA_VERSION);
 
         boolean emailSaved = dataSource.updateEmail(auth);
@@ -242,6 +249,11 @@ public class AccountMigrationService {
         if (!emailSaved || !passwordSaved || !versionSaved) {
             logger.warning("Failed to persist password migration for '" + name + "'");
             return null;
+        }
+        // Record the UUID the account logs in with, so the identity switch feature can
+        // hand out the account's own UUID instead of a regenerated one
+        if (!dataSource.updateUuid(auth)) {
+            logger.warning("Failed to save the UUID of the migrated account '" + name + "'");
         }
         // The password follows the email: propagate it to the other accounts bound to it
         emailPasswordService.syncPasswordToEmail(email, hashedPassword, name);

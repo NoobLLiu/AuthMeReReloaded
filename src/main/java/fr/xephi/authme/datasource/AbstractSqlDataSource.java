@@ -128,6 +128,11 @@ public abstract class AbstractSqlDataSource implements DataSource {
     }
 
     @Override
+    public boolean updateUuid(PlayerAuth auth) {
+        return columnsHandler.update(auth, AuthMeColumns.UUID);
+    }
+
+    @Override
     public boolean isLogged(String user) {
         try {
             DataSourceValue<Integer> result = columnsHandler.retrieve(user, AuthMeColumns.IS_LOGGED);
