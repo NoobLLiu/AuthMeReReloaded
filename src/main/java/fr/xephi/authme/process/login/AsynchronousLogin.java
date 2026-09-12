@@ -299,7 +299,8 @@ public class AsynchronousLogin implements AsynchronousProcess {
                 if (dataSource.updateUuid(auth)) {
                     logger.fine("Synced UUID of '" + player.getName() + "' to " + player.getUniqueId());
                 } else {
-                    logger.warning("Could not save the UUID of '" + player.getName() + "'");
+                    logger.warning("Could not save the UUID of '" + player.getName()
+                        + "': check config value 'DataSource.mySQLPlayerUUID' in authme.yml");
                 }
             }
 

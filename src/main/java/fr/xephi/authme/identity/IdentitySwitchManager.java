@@ -154,6 +154,8 @@ public class IdentitySwitchManager {
                 logger.info(String.format("UUID of account '%s' manually synced to %s", name, uuid));
                 sendMessage(player, MessageKey.IDENTITY_SYNC_SUCCESS, uuid.toString());
             } else {
+                logger.warning("UUID sync failed for '" + name + "': the player_uuid column may not exist or is not configured. "
+                    + "Check config value 'DataSource.mySQLPlayerUUID' in authme.yml");
                 sendMessage(player, MessageKey.IDENTITY_SYNC_FAILED);
             }
         });

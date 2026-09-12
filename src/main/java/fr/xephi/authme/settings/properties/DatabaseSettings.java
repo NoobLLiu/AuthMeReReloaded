@@ -155,7 +155,7 @@ public final class DatabaseSettings implements SettingsHolder {
 
     @Comment("Column for storing players uuids (optional)")
     public static final Property<String> MYSQL_COL_PLAYER_UUID =
-        newProperty( "DataSource.mySQLPlayerUUID", "" );
+        newProperty( "DataSource.mySQLPlayerUUID", "player_uuid" );
 
     @Comment("Column for storing players groups")
     public static final Property<String> MYSQL_COL_GROUP =

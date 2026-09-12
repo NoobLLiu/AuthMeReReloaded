@@ -124,7 +124,27 @@
 6. `help_en/zhcn/zhhk.yml` — /lg detailedDescription 补充 sync 说明
 7. `plugin.yml` — lg usage 更新为 `/lg [sync]`
 
-**用法**：玩家登录后执行 `/lg sync` → 数据库 UUID 列更新为当前连接 UUID → /lg 菜单显示真实 UUID → 可正常切换。若提示"已是最新"但仍未同步，说明 DB 值与连接 UUID 一致但问题在别处（查 DB uuid 列 / 检查部署的 jar 版本）。
+**用法**：玩家登录后执行 `/lg sync` → 数据库 UUID 列更新为当前连接 UUID → /lg 菜单显示真实 UUID → 可正常切换。
+
+## 六之五、会话 6：UUID 列默认值 bug 修复（2026-09-12，未提交）
+
+**根因**：`DatabaseSettings.MYSQL_COL_PLAYER_UUID` 默认值为**空字符串** `""`：
+- `DataSourceColumn.isColumnUsed()`：当列是 `OPTIONAL` 且名称为空时返回 `false` → `ch.jalu.datasourcecolumns` 库在 INSERT/UPDATE 时静默跳过该列
+- SQLite `setup()` 的 `!col.PLAYER_UUID.isEmpty()` 为 `false` → `ALTER TABLE ADD COLUMN` 被跳过 → UUID 列根本不存在于数据库
+- 结果：`saveAuth`/`updateUuid`/`getAuth` 对 UUID 列全部为空操作 → UUID 永远无法被写入或读取
+
+**修复**：
+1. `DatabaseSettings.java` — `newProperty("DataSource.mySQLPlayerUUID", "")` → `"player_uuid"`（新安装时列名默认启用）
+2. `IdentitySwitchManager.syncOwnUuid` — 失败日志加诊断提示（指向 config key）
+3. `AsynchronousLogin.performLogin` — UUID 同步失败日志加诊断提示
+
+**部署注意**：
+- 新建服务器：部署新版 jar 即可，`player_uuid` 列名自动生效，SQLite setup 会在启动时建列
+- 已有服务器且未配置过 `DataSource.mySQLPlayerUUID`：
+  - 方案 A（推荐）：在 `authme.yml` 中手动加上 `DataSource.mySQLPlayerUUID: player_uuid`，重启服务器 → SQLite setup 自动建列
+  - 方案 B：部署新版 jar → `/lg sync` 仍会失败（config 还是空），但登录不会阻断
+- 已有服务器且已配置过 `DataSource.mySQLPlayerUUID: <custom_name>`：无需任何操作，列名已生效，UUID 本就存入
+- `Columns.PLAYER_UUID`（SQLite/MariaDB 等专用 handler 读取的列名）也会随 config 变化，无需额外处理
 
 ## 七、后续可继续的工作（新会话候选）
 
