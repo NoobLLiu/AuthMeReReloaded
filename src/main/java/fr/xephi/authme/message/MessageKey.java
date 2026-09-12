@@ -86,13 +86,13 @@ public enum MessageKey {
     /** Please, login with the command: /login &lt;password&gt; */
     LOGIN_MESSAGE("login.login_request"),
 
-    /** Please, register to the server with the command: /register &lt;password&gt; &lt;ConfirmPassword&gt; */
+    /** Please, register to the server with the command: /register <email>, confirm the code with /email confirm <code>, then set a password with /register <password> <ConfirmPassword> */
     REGISTER_MESSAGE("registration.register_request"),
 
     /** You have exceeded the maximum number of registrations (%reg_count/%max_acc %reg_names) for your connection! */
     MAX_REGISTER_EXCEEDED("error.max_registration", "%max_acc", "%reg_count", "%reg_names"),
 
-    /** Usage: /register &lt;password&gt; &lt;ConfirmPassword&gt; */
+    /** Usage: /register &lt;email&gt;, then /email confirm &lt;code&gt;, then /register &lt;password&gt; &lt;ConfirmPassword&gt; */
     USAGE_REGISTER("registration.command_usage"),
 
     /** Please enter your email address first: /register &lt;email&gt; */
@@ -167,7 +167,7 @@ public enum MessageKey {
     /** Your username contains illegal characters. Allowed chars: %valid_chars */
     INVALID_NAME_CHARACTERS("on_join_validation.characters_in_name", "%valid_chars"),
 
-    /** Please add your email to your account with the command: /email add &lt;yourEmail&gt; &lt;confirmEmail&gt; */
+    /** Please add your email to your account with the command: /email add <yourEmail> */
     ADD_EMAIL_MESSAGE("email.add_email_request"),
 
     /** Forgot your password? Please use the command: /email recovery &lt;yourEmail&gt; */
@@ -185,7 +185,7 @@ public enum MessageKey {
     /** To register you have to solve a captcha first, please use the command: /captcha %captcha_code */
     CAPTCHA_FOR_REGISTRATION_REQUIRED("captcha.captcha_for_registration", "%captcha_code"),
 
-    /** Valid captcha! You may now register with /register */
+    /** Valid captcha! You may now register with /register <email> */
     REGISTER_CAPTCHA_SUCCESS("captcha.register_captcha_valid"),
 
     /** A VIP player has joined the server when it was full! */
@@ -197,7 +197,7 @@ public enum MessageKey {
     /** An error occurred: unresolved player hostname! **/
     KICK_UNRESOLVED_HOSTNAME("error.kick_unresolved_hostname"),
 
-    /** Usage: /email add &lt;email&gt; &lt;confirmEmail&gt; */
+    /** Usage: /email add &lt;email&gt; */
     USAGE_ADD_EMAIL("email.usage_email_add"),
 
     /** Usage: /email change &lt;oldEmail&gt; &lt;newEmail&gt; */
