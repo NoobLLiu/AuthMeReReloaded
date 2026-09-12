@@ -73,6 +73,9 @@ commands:
     aliases:
     - changepass
     - cp
+  lg:
+    description: 个人登录信息菜单
+    usage: /lg ——查看当前账号、归属邮箱与同邮箱下的所有账号，可切换身份（切换后 3 分钟内重新进入服务器即以新身份上线）
   totp:
     description: 两步验证（2FA）命令
     usage: /totp <code|add|confirm|remove> ——输入 /totp help 查看说明

@@ -194,3 +194,26 @@ login_location_fix:
 # 3rd party features: Double Login Fix
 double_login_fix:
   fix_message: '&a已修复幽灵玩家, 请重新进入'
+
+# Identity menu (/lg) and identity switch
+identity:
+  menu_title: '&8个人登录信息'
+  email_not_bound: '未绑定邮箱'
+  no_other_accounts: '该邮箱下暂无其他账号'
+  lore_current: '当前登录账号'
+  lore_email: '归属邮箱'
+  lore_click_switch: '点击切换到此身份'
+  lore_bedrock: '基岩版'
+  lore_java: 'Java版'
+  lore_page_prev: '上一页'
+  lore_page_next: '下一页'
+  lore_close: '关闭'
+  switch_success_kick: '&a切换成功，请重新进入服务器'
+  switch_self: '&c你已处于该身份'
+  not_bound: '&c你尚未绑定邮箱，无法切换身份'
+  target_gone: '&c所选账号已不存在'
+  email_mismatch: '&c所选账号与当前账号不归属同一邮箱'
+  target_occupied: '&c账号 %target% 当前在线，无法切换'
+  switch_conflict: '&c该身份正被其他人切换，请稍后再试'
+  occupied_on_rejoin: '&c身份 %target% 已被占用，本次切换未生效，请正常登录后重试'
+  auto_logged_in: '&a身份已切换，已自动登录'

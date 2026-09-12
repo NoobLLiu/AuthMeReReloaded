@@ -5,7 +5,9 @@ import fr.xephi.authme.AuthMe;
 import fr.xephi.authme.ConsoleLogger;
 import fr.xephi.authme.data.auth.PlayerCache;
 import fr.xephi.authme.datasource.DataSource;
+import fr.xephi.authme.identity.IdentitySwitchManager;
 import fr.xephi.authme.initialization.SettingsDependent;
+import fr.xephi.authme.listener.PreLoginIdentityListener;
 import fr.xephi.authme.output.ConsoleLoggerFactory;
 import fr.xephi.authme.service.BukkitService;
 import fr.xephi.authme.settings.Settings;
@@ -25,6 +27,7 @@ public class ProtocolLibService implements SettingsDependent {
     private InventoryPacketAdapter inventoryPacketAdapter;
     private TabCompletePacketAdapter tabCompletePacketAdapter;
     private I18NGetLocalePacketAdapter i18nGetLocalePacketAdapter;
+    private LoginStartRewriteAdapter loginStartRewriteAdapter;
 
     /* Settings */
     private boolean protectInvBeforeLogin;
@@ -37,14 +40,16 @@ public class ProtocolLibService implements SettingsDependent {
     private final BukkitService bukkitService;
     private final PlayerCache playerCache;
     private final DataSource dataSource;
+    private final IdentitySwitchManager identitySwitchManager;
 
     @Inject
     ProtocolLibService(AuthMe plugin, Settings settings, BukkitService bukkitService, PlayerCache playerCache,
-                       DataSource dataSource) {
+                       DataSource dataSource, IdentitySwitchManager identitySwitchManager) {
         this.plugin = plugin;
         this.bukkitService = bukkitService;
         this.playerCache = playerCache;
         this.dataSource = dataSource;
+        this.identitySwitchManager = identitySwitchManager;
         reload(settings);
     }
 
@@ -102,6 +107,20 @@ public class ProtocolLibService implements SettingsDependent {
             i18nGetLocalePacketAdapter = null;
         }
 
+        // Identity switch: on servers without Paper's profile API, rewriting the login start
+        // packet is the fallback mechanism to change a player's identity on reconnection
+        if (!PreLoginIdentityListener.isPaperProfileSupported()) {
+            if (loginStartRewriteAdapter == null) {
+                loginStartRewriteAdapter = new LoginStartRewriteAdapter(plugin, identitySwitchManager);
+                loginStartRewriteAdapter.register();
+                logger.warning("Paper profile API not detected: identity switch rewriting uses the "
+                    + "ProtocolLib login packet fallback (limited support for Bedrock identities)");
+            }
+        } else if (loginStartRewriteAdapter != null) {
+            loginStartRewriteAdapter.unregister();
+            loginStartRewriteAdapter = null;
+        }
+
         this.isEnabled = true;
     }
 
@@ -122,6 +141,10 @@ public class ProtocolLibService implements SettingsDependent {
         if (i18nGetLocalePacketAdapter != null) {
             i18nGetLocalePacketAdapter.unregister();
             i18nGetLocalePacketAdapter = null;
+        }
+        if (loginStartRewriteAdapter != null) {
+            loginStartRewriteAdapter.unregister();
+            loginStartRewriteAdapter = null;
         }
     }
 

@@ -304,3 +304,6 @@ commands:
         arg1:
             label: '功能'
             description: '要使用的调试功能'
+    lg:
+        description: '个人登录信息菜单'
+        detailedDescription: '查看当前登录账号、归属邮箱及该邮箱下的所有账号。选择账号即可切换身份：切换后会被断开连接，在 3 分钟内重新进入服务器即以所选账号的身份上线。'
