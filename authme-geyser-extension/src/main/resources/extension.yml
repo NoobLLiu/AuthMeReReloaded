@@ -1,6 +1,6 @@
 id: authme-geyser
-name: AuthMe Geyser Extension
+name: AuthMeGeyser
 main: com.authme.geyser.AuthMeGeyserExtension
-api: 1.0
+api: 2.11.2
 version: '1.0.0'
 author: AuthMe

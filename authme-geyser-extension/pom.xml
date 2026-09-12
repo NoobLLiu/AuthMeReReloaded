@@ -18,14 +18,14 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 
         <!--
-            Geyser & Floodgate 版本配置
-            这些是 provided 依赖，只在编译时使用，运行时由 Geyser 进程提供。
+            Geyser Extension API 版本配置
+            这是 provided 依赖，只在编译时使用，运行时由 Geyser 进程提供。
+            版本号必须与服务器上运行的 Geyser 版本一致（extension.yml 的 api 字段同此值）：
             查看服务器版本：启动日志搜索 "Geyser" 或执行 /geyser version
-            SNAPSHOT 版本会自动获取该版本号的最新构建，无需手动更新小版本。
-            如果服务器升级了 Geyser 大版本（如 2.4 → 2.5），只需改下面的版本号。
+            如果服务器升级了 Geyser 大版本（如 2.11 → 2.12），需同步修改此版本号
+            和 extension.yml 中的 api 字段。
         -->
-        <geyser.version>2.4.3-SNAPSHOT</geyser.version>
-        <floodgate.version>2.2.3-SNAPSHOT</floodgate.version>
+        <geyser.version>2.11.2-SNAPSHOT</geyser.version>
     </properties>
 
     <repositories>
@@ -47,19 +47,11 @@
     </repositories>
 
     <dependencies>
-        <!-- Geyser Extension API (core 不需要：内部类通过反射访问) -->
+        <!-- Geyser Extension API (内部类与 Floodgate 均通过反射访问，无需其他依赖) -->
         <dependency>
             <groupId>org.geysermc.geyser</groupId>
             <artifactId>api</artifactId>
             <version>${geyser.version}</version>
-            <scope>provided</scope>
-        </dependency>
-
-        <!-- Floodgate API (for accessing FloodgatePlayer) -->
-        <dependency>
-            <groupId>org.geysermc.floodgate</groupId>
-            <artifactId>api</artifactId>
-            <version>${floodgate.version}</version>
             <scope>provided</scope>
         </dependency>
     </dependencies>

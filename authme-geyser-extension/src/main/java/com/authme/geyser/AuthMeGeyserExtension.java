@@ -1,8 +1,12 @@
 package com.authme.geyser;
 
+import org.geysermc.event.subscribe.Subscribe;
+import org.geysermc.geyser.api.event.lifecycle.GeyserPostInitializeEvent;
+import org.geysermc.geyser.api.event.lifecycle.GeyserShutdownEvent;
 import org.geysermc.geyser.api.extension.Extension;
 import org.geysermc.geyser.api.extension.ExtensionLogger;
 
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -19,6 +23,11 @@ import java.util.concurrent.TimeUnit;
  * <b>Communication mechanism:</b> AuthMe writes pending switch files to
  * {@code plugins/AuthMe/geyser-pending-switches/{xuid}.properties}. This extension reads
  * and consumes those files on reconnection.
+ * <p>
+ * <b>Lifecycle:</b> Geyser extensions do not have onEnable/onDisable methods. The loader
+ * only instantiates the main class and registers it on the event bus. All initialization is
+ * therefore done in {@link GeyserPostInitializeEvent} (fired once Geyser is fully initialized,
+ * right before Bedrock players can connect) and cleanup in {@link GeyserShutdownEvent}.
  */
 public class AuthMeGeyserExtension implements Extension {
 
@@ -29,16 +38,18 @@ public class AuthMeGeyserExtension implements Extension {
     private ScheduledExecutorService cleanupScheduler;
 
     /**
-     * Called by the Geyser extension loader when the extension is enabled.
+     * Fired when Geyser has completed initializing. The Geyser API is fully available
+     * at this stage, and no Bedrock player has connected yet.
      */
-    public void onEnable() {
+    @Subscribe
+    public void onPostInitialize(GeyserPostInitializeEvent event) {
         ExtensionLogger logger = logger();
-        Path serverRoot = resolveServerRoot();
 
-        logger.info("AuthMe Geyser Extension: enabling...");
+        Path authMeDir = resolveAuthMeDirectory();
+        logger.info("AuthMe Geyser Extension: enabling (AuthMe dir: " + authMeDir + ")");
 
         // Initialize the shared store
-        pendingSwitchStore = new PendingSwitchStore(serverRoot, logger);
+        pendingSwitchStore = new PendingSwitchStore(authMeDir, logger);
 
         // Register the identity switch event listener
         identitySwitchListener = new IdentitySwitchListener(pendingSwitchStore, logger);
@@ -59,9 +70,10 @@ public class AuthMeGeyserExtension implements Extension {
     }
 
     /**
-     * Called by the Geyser extension loader when the extension is disabled.
+     * Fired when Geyser is shutting down.
      */
-    public void onDisable() {
+    @Subscribe
+    public void onGeyserShutdown(GeyserShutdownEvent event) {
         ExtensionLogger logger = logger();
         logger.info("AuthMe Geyser Extension: disabling...");
 
@@ -73,27 +85,35 @@ public class AuthMeGeyserExtension implements Extension {
     }
 
     /**
-     * Resolves the server root directory. This is the Minecraft server's working directory
-     * where plugins/ folder is located.
+     * Resolves the AuthMe plugin directory ({@code plugins/AuthMe}) on the Minecraft
+     * server this Geyser instance runs on. AuthMe writes pending switch files to
+     * {@code plugins/AuthMe/geyser-pending-switches/} relative to the server root,
+     * so the directory must match AuthMe's location exactly.
      */
-    private Path resolveServerRoot() {
-        // Try to get the server root from the Geyser extension data folder
-        // The extension data folder is typically: {server}/extensions/authme-geyser/
-        // We need to go up to the server root
-        Path extensionDataFolder = dataFolder();
-        if (extensionDataFolder != null) {
-            // extensionDataFolder = {server}/extensions/authme-geyser/
-            // Go up two levels to reach {server}/
-            Path extensionsDir = extensionDataFolder.getParent();
-            if (extensionsDir != null) {
-                Path serverRoot = extensionsDir.getParent();
-                if (serverRoot != null) {
-                    return serverRoot;
-                }
-            }
+    private Path resolveAuthMeDirectory() {
+        // On Spigot/Paper the Minecraft server root is the process working directory,
+        // and AuthMe resolves its relative paths against it.
+        Path workDir = Path.of(System.getProperty("user.dir", "."));
+        Path candidate = workDir.resolve("plugins").resolve("AuthMe");
+        if (Files.isDirectory(candidate)) {
+            return candidate;
         }
 
-        // Fallback: use current working directory
-        return Path.of(System.getProperty("user.dir", "."));
+        // Walk up from this extension's data folder and look for plugins/AuthMe.
+        // Spigot layout: <server>/plugins/Geyser-Spigot/extensions/<extension-id>/
+        // (going up only two levels from the data folder would yield the Geyser-Spigot
+        // folder, not the server root — hence the explicit search.)
+        Path dir = dataFolder();
+        while (dir != null) {
+            candidate = dir.resolve("plugins").resolve("AuthMe");
+            if (Files.isDirectory(candidate)) {
+                return candidate;
+            }
+            dir = dir.getParent();
+        }
+
+        // Fallback: default layout under the working directory. Pending switch files
+        // only appear once AuthMe writes them, so a not-yet-existing folder is fine.
+        return workDir.resolve("plugins").resolve("AuthMe");
     }
 }

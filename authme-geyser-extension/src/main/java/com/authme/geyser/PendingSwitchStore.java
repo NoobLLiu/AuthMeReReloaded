@@ -25,8 +25,8 @@ public class PendingSwitchStore {
     private final Path switchDir;
     private final ExtensionLogger logger;
 
-    public PendingSwitchStore(Path serverRoot, ExtensionLogger logger) {
-        this.switchDir = serverRoot.resolve("plugins").resolve("AuthMe").resolve(SWITCH_DIR_NAME);
+    public PendingSwitchStore(Path authMeDir, ExtensionLogger logger) {
+        this.switchDir = authMeDir.resolve(SWITCH_DIR_NAME);
         this.logger = logger;
     }
 
