@@ -6,6 +6,7 @@ import org.geysermc.geyser.api.event.connection.GeyserClientInitializeEvent;
 import org.slf4j.Logger;
 
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.util.UUID;
 
 /**
@@ -62,7 +63,7 @@ public class IdentitySwitchListener {
         boolean sessionModified = modifySessionIdentity(connection, pending);
 
         // Modify the Floodgate player data (if Floodgate is available)
-        boolean floodgateModified = modifyFloodgatePlayer(xuid, pending);
+        boolean floodgateModified = modifyFloodgatePlayer(connection, xuid, pending);
 
         if (sessionModified || floodgateModified) {
             logger.info("AuthMe identity switch: successfully modified Bedrock session "
@@ -145,43 +146,111 @@ public class IdentitySwitchListener {
     /**
      * Modifies the FloodgatePlayer's username and UUID, so that Floodgate's Bukkit-side
      * handler creates the Player with the target identity.
+     * <p>
+     * Tries multiple strategies to locate the FloodgatePlayer:
+     * 1. From the GeyserSession's internal flags/state (fastest, most reliable)
+     * 2. From FloodgateApi.getPlayers() by XUID lookup
      */
-    private boolean modifyFloodgatePlayer(String xuid, PendingSwitchStore.PendingSwitchData data) {
+    private boolean modifyFloodgatePlayer(GeyserConnection connection, String xuid,
+                                           PendingSwitchStore.PendingSwitchData data) {
+        // Strategy 1: Try to get the FloodgatePlayer from the GeyserSession's internal state
+        try {
+            Object fgPlayer = findFloodgatePlayerOnSession(connection);
+            if (fgPlayer != null) {
+                return applyFloodgatePlayerChanges(fgPlayer, data);
+            }
+        } catch (Exception e) {
+            logger.debug("Could not get FloodgatePlayer from session: {}", e.getMessage());
+        }
+
+        // Strategy 2: Look up by XUID through FloodgateApi.getPlayers()
         try {
             Class<?> floodgateApiClass = Class.forName("org.geysermc.floodgate.api.FloodgateApi");
             Object api = floodgateApiClass.getMethod("getInstance").invoke(null);
 
-            // Look up by XUID through iteration of all players
             java.util.Collection<?> players =
                 (java.util.Collection<?>) floodgateApiClass.getMethod("getPlayers").invoke(api);
             for (Object player : players) {
                 String playerXuid = (String) player.getClass().getMethod("getXuid").invoke(player);
                 if (xuid.equals(playerXuid)) {
-                    // Found the FloodgatePlayer - modify its fields
-                    Field usernameField = findField(player.getClass(), "correctUsername", "username");
-                    if (usernameField != null) {
-                        usernameField.setAccessible(true);
-                        usernameField.set(player, data.getTargetName());
-                    }
-
-                    Field uuidField = findField(player.getClass(), "correctUniqueId", "uniqueId", "uuid");
-                    if (uuidField != null) {
-                        uuidField.setAccessible(true);
-                        uuidField.set(player, data.getTargetUuid());
-                    }
-
-                    logger.debug("Modified FloodgatePlayer for XUID '{}': name='{}', uuid={}",
-                        xuid, data.getTargetName(), data.getTargetUuid());
-                    return true;
+                    return applyFloodgatePlayerChanges(player, data);
                 }
             }
+            logger.debug("FloodgatePlayer not found in FloodgateApi.getPlayers() for XUID '{}'", xuid);
         } catch (ClassNotFoundException e) {
-            // Floodgate is not installed
             logger.debug("Floodgate API not available for player modification");
         } catch (Exception e) {
-            logger.warn("Could not modify FloodgatePlayer: {}", e.getMessage());
+            logger.warn("Could not modify FloodgatePlayer via API: {}", e.getMessage());
         }
         return false;
+    }
+
+    /**
+     * Tries to find the FloodgatePlayer stored on the GeyserSession (e.g., as a flag or field).
+     */
+    private Object findFloodgatePlayerOnSession(GeyserConnection connection) {
+        // Try session flags (common pattern in Geyser extensions)
+        try {
+            Method getFlagMethod = findMethod(connection.getClass(), "getFlag");
+            if (getFlagMethod != null) {
+                getFlagMethod.setAccessible(true);
+                // Try common flag names used by Floodgate
+                for (String flagName : new String[]{"floodgate_player", "floodgate-player", "floodgatePlayer"}) {
+                    try {
+                        Object player = getFlagMethod.invoke(connection, flagName);
+                        if (player != null) {
+                            logger.debug("Found FloodgatePlayer via session flag '{}'", flagName);
+                            return player;
+                        }
+                    } catch (Exception ignored) {
+                    }
+                }
+            }
+        } catch (Exception ignored) {
+        }
+
+        // Try direct field on the session
+        try {
+            Field fgField = findField(connection.getClass(), "floodgatePlayer", "floodgateData", "floodgate");
+            if (fgField != null) {
+                fgField.setAccessible(true);
+                Object player = fgField.get(connection);
+                if (player != null) {
+                    logger.debug("Found FloodgatePlayer via session field");
+                    return player;
+                }
+            }
+        } catch (Exception ignored) {
+        }
+
+        return null;
+    }
+
+    /**
+     * Applies name and UUID changes to a FloodgatePlayer instance via reflection.
+     */
+    private boolean applyFloodgatePlayerChanges(Object fgPlayer,
+                                                  PendingSwitchStore.PendingSwitchData data) {
+        try {
+            Field usernameField = findField(fgPlayer.getClass(), "correctUsername", "username");
+            if (usernameField != null) {
+                usernameField.setAccessible(true);
+                usernameField.set(fgPlayer, data.getTargetName());
+            }
+
+            Field uuidField = findField(fgPlayer.getClass(), "correctUniqueId", "uniqueId", "uuid");
+            if (uuidField != null) {
+                uuidField.setAccessible(true);
+                uuidField.set(fgPlayer, data.getTargetUuid());
+            }
+
+            logger.debug("Modified FloodgatePlayer: name='{}', uuid={}",
+                data.getTargetName(), data.getTargetUuid());
+            return true;
+        } catch (Exception e) {
+            logger.warn("Could not modify FloodgatePlayer fields: {}", e.getMessage());
+            return false;
+        }
     }
 
     /**
@@ -205,6 +274,22 @@ public class IdentitySwitchListener {
                 try {
                     return current.getDeclaredField(name);
                 } catch (NoSuchFieldException ignored) {
+                }
+            }
+            current = current.getSuperclass();
+        }
+        return null;
+    }
+
+    /**
+     * Searches for a method in the given class and its superclasses by name.
+     */
+    private static Method findMethod(Class<?> clazz, String name) {
+        Class<?> current = clazz;
+        while (current != null && current != Object.class) {
+            for (Method m : current.getDeclaredMethods()) {
+                if (m.getName().equals(name)) {
+                    return m;
                 }
             }
             current = current.getSuperclass();
