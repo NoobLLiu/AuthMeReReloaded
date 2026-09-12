@@ -95,6 +95,22 @@
 
 **行为**：迁移完成时玩家在线，`player.getUniqueId()` 即该账号登录 UUID，写入 DB UUID 列；返回的 auth 对象也带 UUID。迁移后的账号即可被 /lg 正确显示与切换（配合会话 2 的 getAuth 修复）。DataSource 只有 AbstractSqlDataSource 与 CacheDataSource 两个直接实现，均已更新（已全库搜索确认，无测试 mock 实现会编译失败）。
 
+## 六之三、会话 4：UUID 记录完善（2026-09-12，未提交）
+
+**用户需求**：① 绑定邮箱时也记录 UUID；② 无 UUID 的老账号在下一次登录时自动记录/同步；③ 拿不到 UUID 前不再回退重新生成的离线 UUID，改为提示"未获取到UUID，请先使用该账号登录以同步信息"。
+
+**修改（8 个文件，构建通过）**：
+1. `process/login/AsynchronousLogin.java` `performLogin` — `updateSession` 后新增 UUID 同步：`!player.getUniqueId().equals(auth.getUuid())` 时 `setUuid` + `dataSource.updateUuid(auth)`（null=记录，不同=同步；成功 fine 日志，失败 warning）。此钩子覆盖密码登录/会话恢复/forceLogin/切换后自动登录（后者 UUID 相等不触发，无干扰）
+2. `command/executable/email/EmailConfirmCommand.java` — 已登录玩家 `/email add|change` + `/email confirm` 成功路径：`auth.setUuid(player.getUniqueId())` + `updateUuid`（失败仅 warning 不阻断），随后才 `playerCache.updatePlayer(auth)`
+3. `identity/IdentitySwitchManager.java` — `initiateSwitch` 在 target-gone 检查后新增 `targetAuth.getUuid() == null` → 发送 `IDENTITY_SWITCH_UUID_MISSING` 并中止；**删除** `computeOfflineUuid` 与 `resolveTargetUuid` 两个方法及 `StandardCharsets` import（不再回退）
+4. `identity/IdentityMenuService.java` — `open()` 不再回退 computeOfflineUuid，`AccountEntry.uuid` 可为 null；`createAccountItem`：uuid 为 null 时不设头颅 owner、不加 [Java/基岩版] 标记、lore 只显示 uuid_missing 消息（隐藏"点击切换"），否则显示 `UUID: xxx` + 点击提示
+5. `message/MessageKey.java` — 新增 `IDENTITY_SWITCH_UUID_MISSING("identity.uuid_missing")`
+6. `messages_en/zhcn/zhhk.yml` — identity 段各新增 `uuid_missing` 文案（en: No UUID recorded...；zhcn: 未获取到UUID，请先使用该账号登录以同步信息；zhhk: 未獲取到UUID，請先使用該帳戶登入以同步資訊）
+
+**UUID 记录时点汇总**（改造后共 5 处）：注册（saveAuth）、v1→v2 迁移完成（AccountMigrationService 两处）、邮箱绑定确认（EmailConfirmCommand）、任意登录（AsynchronousLogin 兜底同步）。管理员 `/authme setemail`（SetEmailCommand）无 Player 对象，未记录，依赖登录兜底。
+
+**注意**：`EmailConfirmCommand` 的迁移确认路径（processMigrationConfirmation）走 AccountMigrationService（已记录 UUID）；`AsyncAddEmail` 只发验证码，持久化在 EmailConfirmCommand。
+
 ## 七、后续可继续的工作（新会话候选）
 
 1. **合并分支**：将 `trae/agent-0iHQBQ` 合并到 `origin/feat/agent-mail`（合并/创建 PR）

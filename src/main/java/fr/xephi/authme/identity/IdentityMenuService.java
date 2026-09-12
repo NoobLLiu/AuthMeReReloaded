@@ -79,12 +79,9 @@ public class IdentityMenuService {
                     if (accountAuth == null || accountAuth.getRealName() == null) {
                         continue;
                     }
-                    UUID uuid = IdentitySwitchManager.computeOfflineUuid(accountAuth.getRealName());
-                    if (accountAuth.getUuid() != null) {
-                        uuid = accountAuth.getUuid();
-                    }
                     accounts.add(new IdentityMenuHolder.AccountEntry(
-                        accountAuth.getRealName(), uuid, IdentitySwitchManager.isFloodgateUuid(uuid)));
+                        accountAuth.getRealName(), accountAuth.getUuid(),
+                        IdentitySwitchManager.isFloodgateUuid(accountAuth.getUuid())));
                 }
             }
             final String boundEmail = IdentitySwitchManager.isEmailMissing(email) ? null : email;
@@ -226,14 +223,25 @@ public class IdentityMenuService {
     private ItemStack createAccountItem(Player player, IdentityMenuHolder.AccountEntry entry) {
         ItemStack item = new ItemStack(Material.PLAYER_HEAD);
         SkullMeta meta = (SkullMeta) item.getItemMeta();
-        meta.setOwningPlayer(Bukkit.getOfflinePlayer(entry.getUuid()));
-        String edition = entry.isBedrock()
-            ? ChatColor.BLUE + " [" + messages.retrieveSingle(player, MessageKey.IDENTITY_LORE_BEDROCK) + "]"
-            : ChatColor.GREEN + " [" + messages.retrieveSingle(player, MessageKey.IDENTITY_LORE_JAVA) + "]";
+        UUID uuid = entry.getUuid();
+        if (uuid != null) {
+            meta.setOwningPlayer(Bukkit.getOfflinePlayer(uuid));
+        }
+        String edition = "";
+        if (uuid != null) {
+            edition = entry.isBedrock()
+                ? ChatColor.BLUE + " [" + messages.retrieveSingle(player, MessageKey.IDENTITY_LORE_BEDROCK) + "]"
+                : ChatColor.GREEN + " [" + messages.retrieveSingle(player, MessageKey.IDENTITY_LORE_JAVA) + "]";
+        }
         meta.setDisplayName(ChatColor.YELLOW + entry.getRealName() + edition);
         List<String> lore = new ArrayList<>();
-        lore.add(ChatColor.DARK_GRAY + "UUID: " + entry.getUuid());
-        lore.add(ChatColor.GRAY + messages.retrieveSingle(player, MessageKey.IDENTITY_LORE_CLICK_SWITCH));
+        if (uuid == null) {
+            // Old account without a recorded UUID: never fall back to a regenerated one
+            lore.add(messages.retrieveSingle(player, MessageKey.IDENTITY_SWITCH_UUID_MISSING));
+        } else {
+            lore.add(ChatColor.DARK_GRAY + "UUID: " + uuid);
+            lore.add(ChatColor.GRAY + messages.retrieveSingle(player, MessageKey.IDENTITY_LORE_CLICK_SWITCH));
+        }
         meta.setLore(lore);
         item.setItemMeta(meta);
         return item;

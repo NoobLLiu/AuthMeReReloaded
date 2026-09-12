@@ -192,6 +192,7 @@ identity:
   switch_self: '&c你已處於該身份'
   not_bound: '&c你尚未綁定電郵，無法切換身份'
   target_gone: '&c所選帳戶已不存在'
+  uuid_missing: '&c未獲取到UUID，請先使用該帳戶登入以同步資訊'
   email_mismatch: '&c所選帳戶與目前帳戶不歸屬同一電郵'
   target_occupied: '&c帳戶 %target% 目前在線，無法切換'
   switch_conflict: '&c該身份正被其他人切換，請稍後再試'

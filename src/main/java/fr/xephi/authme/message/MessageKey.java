@@ -455,6 +455,9 @@ public enum MessageKey {
     /** The selected account no longer exists. */
     IDENTITY_SWITCH_TARGET_GONE("identity.target_gone"),
 
+    /** No UUID recorded for the selected account yet: log in with it once to sync. */
+    IDENTITY_SWITCH_UUID_MISSING("identity.uuid_missing"),
+
     /** The selected account does not belong to the same email address. */
     IDENTITY_SWITCH_EMAIL_MISMATCH("identity.email_mismatch"),
 

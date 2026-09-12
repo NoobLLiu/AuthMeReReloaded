@@ -204,6 +204,7 @@ identity:
   switch_self: '&cYou are already using this identity'
   not_bound: '&cYou must have an email address bound to your account to switch identities'
   target_gone: '&cThe selected account no longer exists'
+  uuid_missing: '&cNo UUID recorded for this account yet; log in with it once to sync its info'
   email_mismatch: '&cThe selected account does not belong to the same email address'
   target_occupied: '&cThe account %target% is currently online, switching is not possible'
   switch_conflict: '&cAnother player is already switching to this identity, please try again later'

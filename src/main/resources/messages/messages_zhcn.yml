@@ -212,6 +212,7 @@ identity:
   switch_self: '&c你已处于该身份'
   not_bound: '&c你尚未绑定邮箱，无法切换身份'
   target_gone: '&c所选账号已不存在'
+  uuid_missing: '&c未获取到UUID，请先使用该账号登录以同步信息'
   email_mismatch: '&c所选账号与当前账号不归属同一邮箱'
   target_occupied: '&c账号 %target% 当前在线，无法切换'
   switch_conflict: '&c该身份正被其他人切换，请稍后再试'

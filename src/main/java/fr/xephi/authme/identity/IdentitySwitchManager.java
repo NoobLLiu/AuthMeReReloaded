@@ -12,7 +12,6 @@ import fr.xephi.authme.util.expiring.ExpiringMap;
 import org.bukkit.entity.Player;
 
 import javax.inject.Inject;
-import java.nio.charset.StandardCharsets;
 import java.util.Locale;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
@@ -90,6 +89,14 @@ public class IdentitySwitchManager {
                 return;
             }
 
+            UUID targetUuid = targetAuth.getUuid();
+            if (targetUuid == null) {
+                // Old account whose UUID has not been recorded yet: never hand out a
+                // regenerated one — the account must log in once to sync its UUID first
+                sendMessage(player, MessageKey.IDENTITY_SWITCH_UUID_MISSING);
+                return;
+            }
+
             String targetEmail = targetAuth.getEmail();
             if (isEmailMissing(targetEmail) || !targetEmail.equalsIgnoreCase(sourceEmail)) {
                 sendMessage(player, MessageKey.IDENTITY_SWITCH_EMAIL_MISMATCH);
@@ -106,7 +113,6 @@ public class IdentitySwitchManager {
                 return;
             }
 
-            UUID targetUuid = resolveTargetUuid(targetAuth);
             PendingSwitch pending = new PendingSwitch(sourceLower, targetAuth.getRealName(),
                 targetUuid, ip, isFloodgateUuid(targetUuid));
 
@@ -229,30 +235,6 @@ public class IdentitySwitchManager {
      */
     public static boolean isFloodgateUuid(UUID uuid) {
         return uuid != null && uuid.toString().startsWith("00000000-0000-0000-");
-    }
-
-    /**
-     * Computes the offline-mode UUID the server derives from a player name, as defined by
-     * {@code UUID#nameUUIDFromBytes("OfflinePlayer:" + lowercaseName)}.
-     *
-     * @param realName the player name with any casing
-     * @return the offline-mode UUID for the name
-     */
-    public static UUID computeOfflineUuid(String realName) {
-        return UUID.nameUUIDFromBytes(
-            ("OfflinePlayer:" + realName.toLowerCase(Locale.ROOT)).getBytes(StandardCharsets.UTF_8));
-    }
-
-    /**
-     * Resolves the UUID the target identity should be given on reconnection: the UUID stored
-     * in the database if available, otherwise the offline-mode UUID derived from the name.
-     *
-     * @param targetAuth the database entry of the target account
-     * @return the UUID to use for the rewritten identity
-     */
-    private static UUID resolveTargetUuid(PlayerAuth targetAuth) {
-        UUID uuid = targetAuth.getUuid();
-        return uuid != null ? uuid : computeOfflineUuid(targetAuth.getRealName());
     }
 
     /**
