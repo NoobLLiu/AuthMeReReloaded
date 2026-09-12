@@ -4,17 +4,34 @@ import org.geysermc.event.subscribe.Subscribe;
 import org.geysermc.geyser.api.connection.GeyserConnection;
 import org.geysermc.geyser.api.event.bedrock.SessionLoginEvent;
 import org.geysermc.geyser.api.extension.ExtensionLogger;
+import org.geysermc.geyser.api.network.AuthType;
+import org.geysermc.geyser.api.network.RemoteServer;
 
 import java.lang.reflect.Field;
-import java.lang.reflect.Method;
+import java.util.UUID;
 
 /**
- * Listens for Geyser session login events and applies pending identity switches
- * for Bedrock players reconnecting after an AuthMe identity switch.
+ * Listens for Bedrock player logins at the Geyser level and applies pending identity
+ * switches written by AuthMe's IdentitySwitchManager.
  * <p>
- * When a Bedrock player connects, this listener checks for a pending switch (written by
- * AuthMe's {@code IdentitySwitchManager}). If found, it modifies the Geyser session's
- * username and UUID so that Floodgate creates the Player with the target identity.
+ * <b>How it works:</b> AuthMe writes a pending switch file (keyed by the Bedrock player's
+ * XUID) when a Bedrock player initiates a switch to a Java account. When that player
+ * reconnects through Geyser, this listener rewrites the connection identity <b>before</b>
+ * Geyser connects to the Java server:
+ * <ol>
+ *   <li>The {@code MinecraftProtocol} profile is replaced with the target Java identity
+ *       (name + UUID), so the LoginStart packet carries the target identity.</li>
+ *   <li>The session's {@code RemoteServer} is wrapped with {@link AuthType#OFFLINE} so
+ *       {@code GeyserSessionAdapter} does not append encrypted Floodgate data to the
+ *       handshake hostname. Without Floodgate data on the connection, the Floodgate
+ *       plugin treats it as a regular (non-Bedrock) connection and does not override
+ *       the identity with {@code prefix + gamertag} / XUID-based UUID.</li>
+ * </ol>
+ * The AuthMe plugin then fixes up the UUID in AsyncPlayerPreLoginEvent (offline servers
+ * recompute the offline UUID from the name) and completes the switch on PlayerJoinEvent.
+ * <p>
+ * The spoofed connection address is preserved automatically: Geyser's LocalSession
+ * presents the Bedrock player's real IP to the server, so AuthMe's IP check still passes.
  */
 public class IdentitySwitchListener {
 
@@ -40,208 +57,166 @@ public class IdentitySwitchListener {
         if (connection == null) {
             return;
         }
-
-        // Get the XUID directly from the Connection API
         String xuid = connection.xuid();
         if (xuid == null || xuid.isEmpty()) {
             return;
         }
-
-        // Check for a pending identity switch
         PendingSwitchStore.PendingSwitchData pending = store.getAndConsume(xuid);
         if (pending == null) {
             return;
         }
 
-        String originalName = connection.javaUsername();
-        logger.info("AuthMe identity switch: applying Bedrock switch for XUID '"
-            + xuid + "' (original: '" + originalName + "', target: '"
-            + pending.getTargetName() + "', uuid: " + pending.getTargetUuid() + ")");
+        String bedrockName = connection.bedrockUsername();
+        if (isFloodgateUuid(pending.getTargetUuid())) {
+            // Switching to another Bedrock account is not supported: the Floodgate data
+            // (which carries the real XUID) must stay intact for such connections.
+            logger.warning("AuthMe identity switch: target '" + pending.getTargetName()
+                + "' is a Bedrock identity; switching between Bedrock accounts is not supported yet");
+            return;
+        }
 
-        // Modify the Geyser session to use the target identity
-        boolean sessionModified = modifySessionIdentity(connection, pending);
+        logger.info("AuthMe identity switch: applying Bedrock switch for XUID '" + xuid
+            + "' (original: '" + bedrockName + "', target: '" + pending.getTargetName()
+            + "', uuid: " + pending.getTargetUuid() + ")");
 
-        // Modify the Floodgate player data (if Floodgate is available)
-        boolean floodgateModified = modifyFloodgatePlayer(connection, xuid, pending);
-
-        if (sessionModified || floodgateModified) {
-            logger.info("AuthMe identity switch: successfully modified Bedrock session '"
-                + originalName + "' -> '" + pending.getTargetName()
-                + "' (session=" + sessionModified + ", floodgate=" + floodgateModified + ")");
+        if (applyTargetIdentity(connection, pending)) {
+            logger.info("AuthMe identity switch: connection '" + bedrockName
+                + "' will join the Java server as '" + pending.getTargetName()
+                + "' (Floodgate bypassed)");
         } else {
-            logger.warning("AuthMe identity switch: could not modify session or FloodgatePlayer "
-                + "for XUID '" + xuid + "'. The identity switch may not work.");
+            logger.warning("AuthMe identity switch: could not rewrite the session identity for XUID '"
+                + xuid + "'. The identity switch may not work.");
         }
     }
 
     /**
-     * Modifies the GeyserSession's javaUsername and javaUuid via reflection.
+     * Rewrites the session so the downstream connection uses the target Java identity.
+     *
+     * @param connection the Geyser session (GeyserSession)
+     * @param pending the pending switch data
+     * @return true if the session was successfully rewritten
      */
-    private boolean modifySessionIdentity(GeyserConnection connection,
-                                           PendingSwitchStore.PendingSwitchData data) {
-        boolean modified = false;
+    private boolean applyTargetIdentity(Object connection, PendingSwitchStore.PendingSwitchData pending) {
         try {
-            // Modify the java username
-            Field nameField = findField(connection.getClass(), "javaUsername", "username", "name");
-            if (nameField != null) {
-                nameField.setAccessible(true);
-                nameField.set(connection, data.getTargetName());
-                modified = true;
+            // 1. Rewrite the MinecraftProtocol profile (name + UUID) used for the LoginStart packet
+            Object newProfile = createGameProfile(connection, pending.getTargetUuid(), pending.getTargetName());
+            Field protocolField = findField(connection.getClass(), "protocol");
+            if (protocolField == null) {
+                logger.warning("AuthMe identity switch: 'protocol' field not found on "
+                    + connection.getClass().getName());
+                return false;
             }
-
-            // Modify the java UUID
-            Field uuidField = findField(connection.getClass(), "javaUuid", "uuid", "profileId");
-            if (uuidField != null) {
-                uuidField.setAccessible(true);
-                uuidField.set(connection, data.getTargetUuid());
-                modified = true;
+            Object protocol = protocolField.get(connection);
+            if (protocol == null) {
+                logger.warning("AuthMe identity switch: session protocol is not set up yet");
+                return false;
             }
-        } catch (Exception e) {
-            logger.warning("Could not modify GeyserSession identity via reflection: " + e.getMessage());
-        }
-        return modified;
-    }
-
-    /**
-     * Modifies the FloodgatePlayer's username and UUID, so that Floodgate's Bukkit-side
-     * handler creates the Player with the target identity.
-     * <p>
-     * Tries multiple strategies to locate the FloodgatePlayer:
-     * 1. From the GeyserSession's internal flags/state (fastest, most reliable)
-     * 2. From FloodgateApi.getPlayers() by XUID lookup
-     */
-    private boolean modifyFloodgatePlayer(GeyserConnection connection, String xuid,
-                                           PendingSwitchStore.PendingSwitchData data) {
-        // Strategy 1: Try to get the FloodgatePlayer from the GeyserSession's internal state
-        try {
-            Object fgPlayer = findFloodgatePlayerOnSession(connection);
-            if (fgPlayer != null) {
-                return applyFloodgatePlayerChanges(fgPlayer, data);
+            Field profileField = findField(protocol.getClass(), "profile");
+            if (profileField == null) {
+                logger.warning("AuthMe identity switch: 'profile' field not found on "
+                    + protocol.getClass().getName());
+                return false;
             }
-        } catch (Exception e) {
-            logger.debug("Could not get FloodgatePlayer from session: " + e.getMessage());
-        }
+            profileField.set(protocol, newProfile);
 
-        // Strategy 2: Look up by XUID through FloodgateApi.getPlayers()
-        try {
-            Class<?> floodgateApiClass = Class.forName("org.geysermc.floodgate.api.FloodgateApi");
-            Object api = floodgateApiClass.getMethod("getInstance").invoke(null);
-
-            java.util.Collection<?> players =
-                (java.util.Collection<?>) floodgateApiClass.getMethod("getPlayers").invoke(api);
-            for (Object player : players) {
-                String playerXuid = (String) player.getClass().getMethod("getXuid").invoke(player);
-                if (xuid.equals(playerXuid)) {
-                    return applyFloodgatePlayerChanges(player, data);
-                }
+            // 2. Wrap the RemoteServer with OFFLINE auth type so GeyserSessionAdapter does
+            //    not append encrypted Floodgate data to the handshake hostname. Without that
+            //    data, the Floodgate plugin on the server treats this connection as a
+            //    regular Java connection instead of a Bedrock one.
+            Field remoteServerField = findField(connection.getClass(), "remoteServer");
+            if (remoteServerField == null) {
+                logger.warning("AuthMe identity switch: 'remoteServer' field not found on "
+                    + connection.getClass().getName());
+                return false;
             }
-            logger.debug("FloodgatePlayer not found in FloodgateApi.getPlayers() for XUID '" + xuid + "'");
-        } catch (ClassNotFoundException e) {
-            logger.debug("Floodgate API not available for player modification");
-        } catch (Exception e) {
-            logger.warning("Could not modify FloodgatePlayer via API: " + e.getMessage());
-        }
-        return false;
-    }
-
-    /**
-     * Tries to find the FloodgatePlayer stored on the GeyserSession (e.g., as a flag or field).
-     */
-    private Object findFloodgatePlayerOnSession(GeyserConnection connection) {
-        // Try session flags (common pattern in Geyser extensions)
-        try {
-            Method getFlagMethod = findMethod(connection.getClass(), "getFlag");
-            if (getFlagMethod != null) {
-                getFlagMethod.setAccessible(true);
-                // Try common flag names used by Floodgate
-                for (String flagName : new String[]{"floodgate_player", "floodgate-player", "floodgatePlayer"}) {
-                    try {
-                        Object player = getFlagMethod.invoke(connection, flagName);
-                        if (player != null) {
-                            logger.debug("Found FloodgatePlayer via session flag '" + flagName + "'");
-                            return player;
-                        }
-                    } catch (Exception ignored) {
-                    }
-                }
+            RemoteServer currentServer = (RemoteServer) remoteServerField.get(connection);
+            if (currentServer == null || currentServer.authType() != AuthType.FLOODGATE) {
+                // Nothing to bypass (e.g. ONLINE/OFFLINE auth): the LoginStart rewrite above is enough
+                return true;
             }
-        } catch (Exception ignored) {
-        }
+            remoteServerField.set(connection, new OfflineAuthRemoteServer(currentServer));
 
-        // Try direct field on the session
-        try {
-            Field fgField = findField(connection.getClass(), "floodgatePlayer", "floodgateData", "floodgate");
-            if (fgField != null) {
-                fgField.setAccessible(true);
-                Object player = fgField.get(connection);
-                if (player != null) {
-                    logger.debug("Found FloodgatePlayer via session field");
-                    return player;
-                }
-            }
-        } catch (Exception ignored) {
-        }
-
-        return null;
-    }
-
-    /**
-     * Applies name and UUID changes to a FloodgatePlayer instance via reflection.
-     */
-    private boolean applyFloodgatePlayerChanges(Object fgPlayer,
-                                                  PendingSwitchStore.PendingSwitchData data) {
-        try {
-            Field usernameField = findField(fgPlayer.getClass(), "correctUsername", "username");
-            if (usernameField != null) {
-                usernameField.setAccessible(true);
-                usernameField.set(fgPlayer, data.getTargetName());
-            }
-
-            Field uuidField = findField(fgPlayer.getClass(), "correctUniqueId", "uniqueId", "uuid");
-            if (uuidField != null) {
-                uuidField.setAccessible(true);
-                uuidField.set(fgPlayer, data.getTargetUuid());
-            }
-
-            logger.debug("Modified FloodgatePlayer: name='" + data.getTargetName()
-                + "', uuid=" + data.getTargetUuid());
             return true;
         } catch (Exception e) {
-            logger.warning("Could not modify FloodgatePlayer fields: " + e.getMessage());
+            logger.warning("AuthMe identity switch: failed to rewrite session identity: " + e);
             return false;
         }
     }
 
     /**
-     * Searches for a field in the given class and its superclasses by trying multiple names.
+     * Creates an mcprotocollib GameProfile (UUID, name) via reflection: the mcprotocollib
+     * classes are not visible to extensions at compile time.
      */
-    private static Field findField(Class<?> clazz, String... names) {
-        Class<?> current = clazz;
-        while (current != null && current != Object.class) {
-            for (String name : names) {
-                try {
-                    return current.getDeclaredField(name);
-                } catch (NoSuchFieldException ignored) {
-                }
+    private Object createGameProfile(Object session, UUID uuid, String name) throws Exception {
+        ClassLoader classLoader = session.getClass().getClassLoader();
+        Class<?> gameProfileClass = Class.forName(
+            "org.geysermc.mcprotocollib.auth.GameProfile", false, classLoader);
+        return gameProfileClass.getConstructor(UUID.class, String.class).newInstance(uuid, name);
+    }
+
+    /**
+     * Same format check as AuthMe's IdentitySwitchManager.isFloodgateUuid: Bedrock-derived
+     * UUIDs start with 00000000-0000-0000-.
+     */
+    private static boolean isFloodgateUuid(UUID uuid) {
+        return uuid != null && uuid.toString().startsWith("00000000-0000-0000-");
+    }
+
+    /**
+     * Finds a declared field by name, searching the class hierarchy.
+     */
+    private static Field findField(Class<?> clazz, String name) throws IllegalAccessException {
+        for (Class<?> c = clazz; c != null; c = c.getSuperclass()) {
+            try {
+                Field field = c.getDeclaredField(name);
+                field.setAccessible(true);
+                return field;
+            } catch (NoSuchFieldException ignored) {
+                // continue with the superclass
             }
-            current = current.getSuperclass();
         }
         return null;
     }
 
     /**
-     * Searches for a method in the given class and its superclasses by name.
+     * Delegating RemoteServer wrapper that reports {@link AuthType#OFFLINE}. Used to make
+     * GeyserSessionAdapter skip the Floodgate handshake data for this one connection.
      */
-    private static Method findMethod(Class<?> clazz, String name) {
-        Class<?> current = clazz;
-        while (current != null && current != Object.class) {
-            for (Method m : current.getDeclaredMethods()) {
-                if (m.getName().equals(name)) {
-                    return m;
-                }
-            }
-            current = current.getSuperclass();
+    private static final class OfflineAuthRemoteServer implements RemoteServer {
+        private final RemoteServer delegate;
+
+        OfflineAuthRemoteServer(RemoteServer delegate) {
+            this.delegate = delegate;
         }
-        return null;
+
+        @Override
+        public String address() {
+            return delegate.address();
+        }
+
+        @Override
+        public int port() {
+            return delegate.port();
+        }
+
+        @Override
+        public int protocolVersion() {
+            return delegate.protocolVersion();
+        }
+
+        @Override
+        public String minecraftVersion() {
+            return delegate.minecraftVersion();
+        }
+
+        @Override
+        public AuthType authType() {
+            return AuthType.OFFLINE;
+        }
+
+        @Override
+        public boolean resolveSrv() {
+            return delegate.resolveSrv();
+        }
     }
 }

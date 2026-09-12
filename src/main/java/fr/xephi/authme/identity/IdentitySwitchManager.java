@@ -191,6 +191,23 @@ public class IdentitySwitchManager {
     }
 
     /**
+     * Returns the pending switch whose <b>target</b> matches the given name, without
+     * consuming it. Used when a Bedrock player reconnects through the Geyser extension:
+     * the extension rewrites the login packet to the target identity, so the connection
+     * arrives under the target's name and the UUID must be fixed up in the pre-login stage.
+     *
+     * @param name the name the connecting player joined with (any casing)
+     * @return the pending switch targeting this name, or null if none is pending
+     */
+    public PendingSwitch getPendingSwitchByTarget(String name) {
+        if (name == null) {
+            return null;
+        }
+        String sourceLower = sourceByTarget.get(name.toLowerCase(Locale.ROOT));
+        return sourceLower == null ? null : pendingBySource.get(sourceLower);
+    }
+
+    /**
      * Marks the pending switch of the given account as consumed (one-shot semantics).
      *
      * @param sourceName the name the connecting player joined with (any casing)

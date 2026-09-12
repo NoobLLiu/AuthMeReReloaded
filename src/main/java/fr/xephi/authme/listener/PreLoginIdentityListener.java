@@ -77,7 +77,13 @@ public class PreLoginIdentityListener implements Listener {
         String sourceLower = event.getName().toLowerCase(Locale.ROOT);
         PendingSwitch pending = identitySwitchManager.getPendingSwitch(sourceLower);
         if (pending == null) {
-            return;
+            // Bedrock players reconnecting through the Geyser extension arrive under the
+            // target's name (the extension rewrote the login packet): look up by target.
+            // Offline servers recompute the UUID from the name, so it must be rewritten here.
+            pending = identitySwitchManager.getPendingSwitchByTarget(event.getName());
+            if (pending == null) {
+                return;
+            }
         }
 
         String ip = event.getAddress().getHostAddress();
